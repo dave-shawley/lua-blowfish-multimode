@@ -1,0 +1,6 @@
+return {
+    _all = {
+        cpath = "./?.so",
+        output = "TAP",
+    }
+}

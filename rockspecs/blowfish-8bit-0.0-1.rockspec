@@ -1,3 +1,4 @@
+rockspec_format = "3.0"
 package = "blowfish-8bit"
 version = "0.0-1"
 source = {
@@ -20,4 +21,8 @@ build = {
     modules = {
         ["blowfish"] = {"blowfish8bit/lua_blowfish.c", "blowfish8bit/blowfish.c"}
     }
+}
+test = {}
+test_dependencies = {
+    "busted"
 }
