@@ -142,14 +142,14 @@ verify_params(uint8_t const *key, size_t key_len,
     switch (mode) {
     case MODE_CBC:
         if (iv == NULL || iv_len != BLOWFISH_BLOCK_SIZE) {
-            err(err_context, "initialization vector required to be %u bytes in length, parameter is %zu bytes",
+            err(err_context, "initialization vector required to be %d bytes in length, parameter is %d bytes",
                 BLOWFISH_BLOCK_SIZE, iv_len);
             return false;
         }
         break;
     case MODE_CFB:
         if (iv == NULL || iv_len != BLOWFISH_BLOCK_SIZE) {
-            err(err_context, "initialization vector required to be %u bytes in length, parameter is %zu bytes",
+            err(err_context, "initialization vector required to be %d bytes in length, parameter is %d bytes",
                 BLOWFISH_BLOCK_SIZE, iv_len);
             return false;
         }
@@ -172,13 +172,13 @@ verify_params(uint8_t const *key, size_t key_len,
         break;
     case MODE_OFB:
         if (iv == NULL || iv_len != BLOWFISH_BLOCK_SIZE) {
-            err(err_context, "initialization vector required to be %u bytes in length, parameter is %zu bytes",
+            err(err_context, "initialization vector required to be %d bytes in length, parameter is %d bytes",
                 BLOWFISH_BLOCK_SIZE, iv_len);
             return false;
         }
         break;
     default:
-        err(err_context, "mode %u is not implemented", mode);
+        err(err_context, "mode %d is not implemented", mode);
         return false;
     }
 
@@ -299,15 +299,15 @@ blowfish_encrypt(blowfish_state *self,
     if (msg_len % BLOWFISH_BLOCK_SIZE) {
         switch (self->mode) {
         case MODE_CBC:
-            on_error(error_context, "CBC mode requires input multiple of %zu bytes", BLOWFISH_BLOCK_SIZE);
+            on_error(error_context, "CBC mode requires input multiple of %d bytes", BLOWFISH_BLOCK_SIZE);
             return NULL;
         case MODE_ECB:
-            on_error(error_context, "ECB mode requires input multiple of %zu bytes", BLOWFISH_BLOCK_SIZE);
+            on_error(error_context, "ECB mode requires input multiple of %d bytes", BLOWFISH_BLOCK_SIZE);
             return NULL;
         }
     }
     if (self->mode == MODE_CFB && (msg_len % (self->segment_size / 8))) {
-        on_error(error_context, "CFB mode requires input strings multiple of %u bytes",
+        on_error(error_context, "CFB mode requires input strings multiple of %d bytes",
             self->segment_size / 8);
         return NULL;
     }
@@ -411,7 +411,7 @@ blowfish_decrypt(blowfish_state *self,
     if (self->mode == MODE_CFB) {
         if (msg_len % (self->segment_size / 8)) {
             on_error(error_context,
-                     "Ciphertext must be a multiple of segment size %u in length",
+                     "Ciphertext must be a multiple of segment size %d in length",
                      (self->segment_size / 8));
             return NULL;
         }
