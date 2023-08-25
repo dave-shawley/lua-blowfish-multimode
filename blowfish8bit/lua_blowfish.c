@@ -100,9 +100,6 @@ new_blowfish(lua_State *L)
         break;
     }
 
-    FILE *fp = fopen("bf.log", "w");
-    fprintf(fp, "creating userdata\n");
-
     blowfish_state* state = (blowfish_state*) lua_newuserdata(L, sizeof(blowfish_state));
     if (blowfish_init(state,
                       (uint8_t*)key, (size_t)key_len,
@@ -110,15 +107,10 @@ new_blowfish(lua_State *L)
                        (blowfish_mode)mode, (int)segment_size,
                        on_error, L))
     {
-        fprintf(fp, "attaching metatable\n");
         luaL_getmetatable(L, TABLE_NAME);
         lua_setmetatable(L, -2);
-        fclose(fp);
         return 1;
-    } else {
-        fprintf(fp, "blowfish_init failed!\n");
     }
-    fclose(fp);
     return 0;
 }
 
