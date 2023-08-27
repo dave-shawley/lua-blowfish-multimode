@@ -21,7 +21,8 @@ main(int argc, char *argv[])
     key = from_hex_or_fail(argv[2], &key_len);
     iv = from_hex_or_fail(argv[3], &iv_len);
 
-    blowfish_state *state = blowfish_new(key, key_len, iv, iv_len, mode, 0, &report_error, stderr);
+    blowfish_state *state =
+        blowfish_new(key, key_len, iv, iv_len, mode, 0, &report_error, stderr);
     if (state != NULL) {
         printf("Hex Ciphertext: ");
         fflush(stdout);
@@ -33,7 +34,9 @@ main(int argc, char *argv[])
             }
 
             size_t plain_len;
-            uint8_t *plaintext = blowfish_decrypt(state, ciphertext, cipher_len, &plain_len, &report_error, stderr);
+            uint8_t *plaintext =
+                blowfish_decrypt(state, ciphertext, cipher_len, &plain_len,
+                                 &report_error, stderr);
             if (plaintext) {
                 hexdump(stdout, plaintext, plain_len);
                 free(plaintext);

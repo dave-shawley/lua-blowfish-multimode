@@ -23,7 +23,7 @@
  * Country of origin: Canada
  */
 #ifndef BLOWFISH_TABLES_H
-#define BLOWFISH_TABLES_H
+#    define BLOWFISH_TABLES_H
 
 /* The hexadecimal digits of pi, less 3. */
 
@@ -31,8 +31,7 @@ static const uint32_t initial_P[18] = {
     0x243f6a88u, 0x85a308d3u, 0x13198a2eu, 0x03707344u, 0xa4093822u,
     0x299f31d0u, 0x082efa98u, 0xec4e6c89u, 0x452821e6u, 0x38d01377u,
     0xbe5466cfu, 0x34e90c6cu, 0xc0ac29b7u, 0xc97c50ddu, 0x3f84d5b5u,
-    0xb5470917u, 0x9216d5d9u, 0x8979fb1bu
-};
+    0xb5470917u, 0x9216d5d9u, 0x8979fb1bu};
 
 static const uint32_t initial_S1[256] = {
     0xd1310ba6u, 0x98dfb5acu, 0x2ffd72dbu, 0xd01adfb7u, 0xb8e1afedu,
@@ -86,8 +85,7 @@ static const uint32_t initial_S1[256] = {
     0xd60f573fu, 0xbc9bc6e4u, 0x2b60a476u, 0x81e67400u, 0x08ba6fb5u,
     0x571be91fu, 0xf296ec6bu, 0x2a0dd915u, 0xb6636521u, 0xe7b9f9b6u,
     0xff34052eu, 0xc5855664u, 0x53b02d5du, 0xa99f8fa1u, 0x08ba4799u,
-    0x6e85076au
-};
+    0x6e85076au};
 
 static const uint32_t initial_S2[256] = {
     0x4b7a70e9u, 0xb5b32944u, 0xdb75092eu, 0xc4192623u, 0xad6ea6b0u,
@@ -141,8 +139,7 @@ static const uint32_t initial_S2[256] = {
     0x9e447a2eu, 0xc3453484u, 0xfdd56705u, 0x0e1e9ec9u, 0xdb73dbd3u,
     0x105588cdu, 0x675fda79u, 0xe3674340u, 0xc5c43465u, 0x713e38d8u,
     0x3d28f89eu, 0xf16dff20u, 0x153e21e7u, 0x8fb03d4au, 0xe6e39f2bu,
-    0xdb83adf7u
-};
+    0xdb83adf7u};
 
 static const uint32_t initial_S3[256] = {
     0xe93d5a68u, 0x948140f7u, 0xf64c261cu, 0x94692934u, 0x411520f7u,
@@ -196,8 +193,7 @@ static const uint32_t initial_S3[256] = {
     0xed545578u, 0x08fca5b5u, 0xd83d7cd3u, 0x4dad0fc4u, 0x1e50ef5eu,
     0xb161e6f8u, 0xa28514d9u, 0x6c51133cu, 0x6fd5c7e7u, 0x56e14ec4u,
     0x362abfceu, 0xddc6c837u, 0xd79a3234u, 0x92638212u, 0x670efa8eu,
-    0x406000e0u
-};
+    0x406000e0u};
 
 static const uint32_t initial_S4[256] = {
     0x3a39ce37u, 0xd3faf5cfu, 0xabc27737u, 0x5ac52d1bu, 0x5cb0679eu,
@@ -251,8 +247,7 @@ static const uint32_t initial_S4[256] = {
     0x85cbfe4eu, 0x8ae88dd8u, 0x7aaaf9b0u, 0x4cf9aa7eu, 0x1948c25cu,
     0x02fb8a8cu, 0x01c36ae4u, 0xd6ebe1f9u, 0x90d4f869u, 0xa65cdea0u,
     0x3f09252du, 0xc208e69fu, 0xb74e6132u, 0xce77e25bu, 0x578fdfe3u,
-    0x3ac372e6u
-};
+    0x3ac372e6u};
 
 #endif /* BLOWFISH_TABLES_H */
-/* vim:set ts=4 sw=4 sts=4 expandtab: */
+       /* vim:set ts=4 sw=4 sts=4 expandtab: */

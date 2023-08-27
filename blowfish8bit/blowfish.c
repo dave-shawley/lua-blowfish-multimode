@@ -1,5 +1,6 @@
 /*
- * Based on pycrypto implementation of blowfish algorithm with an 8 byte block size
+ * Based on pycrypto implementation of blowfish algorithm with support
+ * for multiple modes.
  */
 /*
  *  Blowfish.c : Blowfish implementation
@@ -32,11 +33,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "blowfish.h"
 #include "blowfish-tables.h"
+#include "blowfish.h"
 
-#define F(a,b,c,d) ((((a) + (b)) ^ (c)) + (d))
-#define SWAP(a,b) do { uint32_t tmp = a; a = b; b = tmp; } while (0)
+#define F(a, b, c, d) ((((a) + (b)) ^ (c)) + (d))
+#define SWAP(a, b)                                                             \
+    do {                                                                       \
+        uint32_t tmp = a;                                                      \
+        a = b;                                                                 \
+        b = tmp;                                                               \
+    } while (0)
 #define NUM_ELEMENTS(ary) (sizeof(ary) / sizeof(ary[0]))
 
 static void
@@ -49,85 +55,80 @@ default_error_func(void *context, char const *fmt, ...)
 static inline uint32_t
 bytes_to_word(uint8_t const *in)
 {
-	return (in[0] << 24) | (in[1] << 16) | (in[2] << 8) | in[3];
+    return (in[0] << 24) | (in[1] << 16) | (in[2] << 8) | in[3];
 }
 
 static inline void
 word_to_bytes(uint32_t word, uint8_t *out)
 {
-	*out++ = (word >> 24) & 0xFF;
-	*out++ = (word >> 16) & 0xFF;
-	*out++ = (word >>  8) & 0xFF;
-	*out++ =  word        & 0xFF;
+    *out++ = (word >> 24) & 0xFF;
+    *out++ = (word >> 16) & 0xFF;
+    *out++ = (word >> 8) & 0xFF;
+    *out++ = word & 0xFF;
 }
 
 static inline void
 inline_encrypt(blowfish_state *self, uint32_t *pxL, uint32_t *pxR)
 {
-	uint32_t xL = *pxL;
-	uint32_t xR = *pxR;
+    uint32_t xL = *pxL;
+    uint32_t xR = *pxR;
 
-	for (int i=0; i<16; ++i) {
-		xL ^= self->P[i];
-		xR ^= F(self->S1[(xL >> 24) & 0xFF],
-			self->S2[(xL >> 16) & 0xFF],
-			self->S3[(xL >>  8) & 0xFF],
-			self->S4[xL & 0xFF]);
-		SWAP(xL, xR);
-	}
-	SWAP(xL, xR);
-	xR ^= self->P[16];
-	xL ^= self->P[17];
-	*pxL = xL;
-	*pxR = xR;
+    for (int i = 0; i < 16; ++i) {
+        xL ^= self->P[i];
+        xR ^= F(self->S1[(xL >> 24) & 0xFF], self->S2[(xL >> 16) & 0xFF],
+                self->S3[(xL >> 8) & 0xFF], self->S4[xL & 0xFF]);
+        SWAP(xL, xR);
+    }
+    SWAP(xL, xR);
+    xR ^= self->P[16];
+    xL ^= self->P[17];
+    *pxL = xL;
+    *pxR = xR;
 }
 
 static inline void
 inline_decrypt(blowfish_state *self, uint32_t *pxL, uint32_t *pxR)
 {
-	uint32_t xL = *pxL;
-	uint32_t xR = *pxR;
+    uint32_t xL = *pxL;
+    uint32_t xR = *pxR;
 
-	xL ^= self->P[17];
-	xR ^= self->P[16];
-	SWAP(xL, xR);
+    xL ^= self->P[17];
+    xR ^= self->P[16];
+    SWAP(xL, xR);
 
-	for (int i=15; i>=0; --i) {
-		SWAP(xL, xR);
-		xR ^= F(self->S1[(xL >> 24) & 0xFF],
-			self->S2[(xL >> 16) & 0xFF],
-			self->S3[(xL >>  8) & 0xFF],
-			self->S4[xL & 0xFF]);
-		xL ^= self->P[i];
-	}
-	*pxL = xL;
-	*pxR = xR;
+    for (int i = 15; i >= 0; --i) {
+        SWAP(xL, xR);
+        xR ^= F(self->S1[(xL >> 24) & 0xFF], self->S2[(xL >> 16) & 0xFF],
+                self->S3[(xL >> 8) & 0xFF], self->S4[xL & 0xFF]);
+        xL ^= self->P[i];
+    }
+    *pxL = xL;
+    *pxR = xR;
 }
 
 static void
 block_encrypt(blowfish_state *self, uint8_t const *in, uint8_t *out)
 {
-	uint32_t xL = bytes_to_word(in);
-	uint32_t xR = bytes_to_word(in + 4);
-	inline_encrypt(self, &xL, &xR);
-	word_to_bytes(xL, out);
-	word_to_bytes(xR, out + 4);
+    uint32_t xL = bytes_to_word(in);
+    uint32_t xR = bytes_to_word(in + 4);
+    inline_encrypt(self, &xL, &xR);
+    word_to_bytes(xL, out);
+    word_to_bytes(xR, out + 4);
 }
 
 static void
 block_decrypt(blowfish_state *self, uint8_t const *in, uint8_t *out)
 {
-	uint32_t xL = bytes_to_word(in);
-	uint32_t xR = bytes_to_word(in + 4);
-	inline_decrypt(self, &xL, &xR);
-	word_to_bytes(xL, out);
-	word_to_bytes(xR, out + 4);
+    uint32_t xL = bytes_to_word(in);
+    uint32_t xR = bytes_to_word(in + 4);
+    inline_decrypt(self, &xL, &xR);
+    word_to_bytes(xL, out);
+    word_to_bytes(xR, out + 4);
 }
 
 static bool
-verify_params(uint8_t const *key, size_t key_len,
-              uint8_t const *iv, size_t iv_len,
-              blowfish_mode mode, int *segment_size,
+verify_params(uint8_t const *key, size_t key_len, uint8_t const *iv,
+              size_t iv_len, blowfish_mode mode, int *segment_size,
               error_function err, void *err_context)
 {
     if (!key_len || !key) {
@@ -142,22 +143,33 @@ verify_params(uint8_t const *key, size_t key_len,
     switch (mode) {
     case MODE_CBC:
         if (iv == NULL || iv_len != BLOWFISH_BLOCK_SIZE) {
-            err(err_context, "initialization vector required to be %d bytes in length, parameter is %d bytes",
+            err(err_context,
+                "initialization vector required to be %d bytes in "
+                "length, "
+                "parameter is %d bytes",
                 BLOWFISH_BLOCK_SIZE, iv_len);
             return false;
         }
         break;
     case MODE_CFB:
         if (iv == NULL || iv_len != BLOWFISH_BLOCK_SIZE) {
-            err(err_context, "initialization vector required to be %d bytes in length, parameter is %d bytes",
+            err(err_context,
+                "initialization vector required to be %d bytes in "
+                "length, "
+                "parameter is %d bytes",
                 BLOWFISH_BLOCK_SIZE, iv_len);
             return false;
         }
         if (*segment_size == 0) {
             *segment_size = 8;
         }
-        if (*segment_size < 1 || *segment_size > (BLOWFISH_BLOCK_SIZE * 8) || (*segment_size & 7)) {
-            err(err_context, "segment size must be a multiple of 8 bits between 1 and %d", BLOWFISH_BLOCK_SIZE * 8);
+        if (*segment_size < 1 || *segment_size > (BLOWFISH_BLOCK_SIZE * 8)
+            || (*segment_size & 7))
+        {
+            err(err_context,
+                "segment size must be a multiple of 8 bits between "
+                "1 and %d",
+                BLOWFISH_BLOCK_SIZE * 8);
             return false;
         }
         break;
@@ -172,7 +184,10 @@ verify_params(uint8_t const *key, size_t key_len,
         break;
     case MODE_OFB:
         if (iv == NULL || iv_len != BLOWFISH_BLOCK_SIZE) {
-            err(err_context, "initialization vector required to be %d bytes in length, parameter is %d bytes",
+            err(err_context,
+                "initialization vector required to be %d bytes in "
+                "length, "
+                "parameter is %d bytes",
                 BLOWFISH_BLOCK_SIZE, iv_len);
             return false;
         }
@@ -185,26 +200,27 @@ verify_params(uint8_t const *key, size_t key_len,
     return true;
 }
 
-blowfish_state*
-blowfish_new(uint8_t const *key, size_t key_len,
-             uint8_t const *iv, size_t iv_len,
-             blowfish_mode mode, int segment_size,
+blowfish_state *
+blowfish_new(uint8_t const *key, size_t key_len, uint8_t const *iv,
+             size_t iv_len, blowfish_mode mode, int segment_size,
              error_function on_error, void *error_context)
 {
-	blowfish_state *self;
+    blowfish_state *self;
 
     if (on_error == NULL) {
         on_error = &default_error_func;
     }
-	self = (blowfish_state*)malloc(sizeof(*self));
-	if (self != NULL) {
-        if (!blowfish_init(self, key, key_len, iv, iv_len, mode, segment_size, on_error, error_context)) {
+    self = (blowfish_state *)malloc(sizeof(*self));
+    if (self != NULL) {
+        if (!blowfish_init(self, key, key_len, iv, iv_len, mode, segment_size,
+                           on_error, error_context))
+        {
             free(self);
             self = NULL;
         }
     }
 
-	return self;
+    return self;
 }
 
 void
@@ -216,11 +232,9 @@ blowfish_free(blowfish_state *self)
 }
 
 bool
-blowfish_init(blowfish_state *self,
-              uint8_t const *key, size_t key_len,
-              uint8_t const *iv, size_t iv_len,
-              blowfish_mode mode, int segment_size,
-              error_function on_error, void *error_context)
+blowfish_init(blowfish_state *self, uint8_t const *key, size_t key_len,
+              uint8_t const *iv, size_t iv_len, blowfish_mode mode,
+              int segment_size, error_function on_error, void *error_context)
 {
     uint32_t word = 0;
     uint32_t xL, xR;
@@ -228,7 +242,9 @@ blowfish_init(blowfish_state *self,
     if (on_error == NULL) {
         on_error = &default_error_func;
     }
-    if (!verify_params(key, key_len, iv, iv_len, mode, &segment_size, on_error, error_context)) {
+    if (!verify_params(key, key_len, iv, iv_len, mode, &segment_size, on_error,
+                       error_context))
+    {
         return false;
     }
 
@@ -241,7 +257,7 @@ blowfish_init(blowfish_state *self,
     }
     memset(&self->old_cipher, 0, BLOWFISH_BLOCK_SIZE);
 
-    for (int i=0; i<(18 * 4); ++i) {
+    for (int i = 0; i < (18 * 4); ++i) {
         word = (word << 8) | key[i % key_len];
         if ((i & 3) == 3) {
             self->P[i >> 2] = initial_P[i >> 2] ^ word;
@@ -255,13 +271,14 @@ blowfish_init(blowfish_state *self,
     memcpy(&self->S4[0], initial_S4, 256 * sizeof(uint32_t));
 
     xL = xR = 0;
-#	define initialize(ary) do { \
-		for (size_t i=0; i<NUM_ELEMENTS(ary); i+=2) { \
-			inline_encrypt(self, &xL, &xR); \
-			ary[i] = xL; \
-			ary[i+1] = xR; \
-		} \
-	} while (0)
+#define initialize(ary)                                                        \
+    do {                                                                       \
+        for (size_t i = 0; i < NUM_ELEMENTS(ary); i += 2) {                    \
+            inline_encrypt(self, &xL, &xR);                                    \
+            ary[i] = xL;                                                       \
+            ary[i + 1] = xR;                                                   \
+        }                                                                      \
+    } while (0)
 
     initialize(self->P);
     initialize(self->S1);
@@ -279,12 +296,11 @@ blowfish_reset(blowfish_state *self)
     self->count = BLOWFISH_BLOCK_SIZE;
 }
 
-uint8_t*
-blowfish_encrypt(blowfish_state *self,
-                 uint8_t const *msg, size_t msg_len, size_t *out_len,
-                 error_function on_error, void *error_context)
+uint8_t *
+blowfish_encrypt(blowfish_state *self, uint8_t const *msg, size_t msg_len,
+                 size_t *out_len, error_function on_error, void *error_context)
 {
-	uint8_t temp[BLOWFISH_BLOCK_SIZE];
+    uint8_t temp[BLOWFISH_BLOCK_SIZE];
     size_t i, j;
     uint8_t *out_buf;
 
@@ -293,69 +309,75 @@ blowfish_encrypt(blowfish_state *self,
     }
 
     *out_len = 0;
-	if (msg_len == 0) {
-		return NULL;
-	}
+    if (msg_len == 0) {
+        return NULL;
+    }
     if (msg_len % BLOWFISH_BLOCK_SIZE) {
         switch (self->mode) {
         case MODE_CBC:
-            on_error(error_context, "CBC mode requires input multiple of %d bytes", BLOWFISH_BLOCK_SIZE);
+            on_error(error_context,
+                     "CBC mode requires input multiple of %d bytes",
+                     BLOWFISH_BLOCK_SIZE);
             return NULL;
         case MODE_ECB:
-            on_error(error_context, "ECB mode requires input multiple of %d bytes", BLOWFISH_BLOCK_SIZE);
+            on_error(error_context,
+                     "ECB mode requires input multiple of %d bytes",
+                     BLOWFISH_BLOCK_SIZE);
             return NULL;
         }
     }
     if (self->mode == MODE_CFB && (msg_len % (self->segment_size / 8))) {
-        on_error(error_context, "CFB mode requires input strings multiple of %d bytes",
-            self->segment_size / 8);
+        on_error(error_context,
+                 "CFB mode requires input strings multiple of %d bytes",
+                 self->segment_size / 8);
         return NULL;
     }
 
-	out_buf = (uint8_t*)malloc(msg_len);
-	if (out_buf == NULL) {
-        on_error(error_context, "failed to allocate buffer of %d bytes", *out_len);
-		return NULL;
-	}
+    out_buf = (uint8_t *)malloc(msg_len);
+    if (out_buf == NULL) {
+        on_error(error_context, "failed to allocate buffer of %d bytes",
+                 *out_len);
+        return NULL;
+    }
     *out_len = msg_len;
 
-	switch (self->mode) {
+    switch (self->mode) {
     case MODE_CBC:
-        for (i=0; i<msg_len; i+=BLOWFISH_BLOCK_SIZE) {
-            for (j=0; j < BLOWFISH_BLOCK_SIZE; ++j) {
-                temp[j] = msg[i+j] ^ self->iv[j];
+        for (i = 0; i < msg_len; i += BLOWFISH_BLOCK_SIZE) {
+            for (j = 0; j < BLOWFISH_BLOCK_SIZE; ++j) {
+                temp[j] = msg[i + j] ^ self->iv[j];
             }
             block_encrypt(self, temp, out_buf + i);
             memcpy(self->iv, out_buf + i, BLOWFISH_BLOCK_SIZE);
         }
         break;
-	case MODE_CFB:
-		for (i=0; i<msg_len; i+=self->segment_size/8) {
-			block_encrypt(self, self->iv, temp);
-			for (j=0; j<self->segment_size/8; j++) {
-				out_buf[i+j] = msg[i+j] ^ temp[j];
-			}
-			if (self->segment_size == (BLOWFISH_BLOCK_SIZE * 8)) {
-				memcpy(self->iv, out_buf + i, BLOWFISH_BLOCK_SIZE);
-			} else if ((self->segment_size % 8) == 0) {
-				size_t sz = self->segment_size / 8;
-				memmove(self->iv, self->iv + sz, BLOWFISH_BLOCK_SIZE - sz);
-				memcpy(self->iv + BLOWFISH_BLOCK_SIZE - sz, out_buf + i, sz);
-			} else {
-				/* should not happen! */
-			}
-		}
+    case MODE_CFB:
+        for (i = 0; i < msg_len; i += self->segment_size / 8) {
+            block_encrypt(self, self->iv, temp);
+            for (j = 0; j < self->segment_size / 8; j++) {
+                out_buf[i + j] = msg[i + j] ^ temp[j];
+            }
+            if (self->segment_size == (BLOWFISH_BLOCK_SIZE * 8)) {
+                memcpy(self->iv, out_buf + i, BLOWFISH_BLOCK_SIZE);
+            } else if ((self->segment_size % 8) == 0) {
+                size_t sz = self->segment_size / 8;
+                memmove(self->iv, self->iv + sz, BLOWFISH_BLOCK_SIZE - sz);
+                memcpy(self->iv + BLOWFISH_BLOCK_SIZE - sz, out_buf + i, sz);
+            } else {
+                /* should not happen! */
+            }
+        }
         break;
     case MODE_ECB:
-        for (i=0; i<msg_len; i+=BLOWFISH_BLOCK_SIZE) {
+        for (i = 0; i < msg_len; i += BLOWFISH_BLOCK_SIZE) {
             block_encrypt(self, msg + i, out_buf + i);
         }
         break;
-	case MODE_OFB:
+    case MODE_OFB:
         i = 0;
         while (i < msg_len) {
             if ((msg_len - i) <= (BLOWFISH_BLOCK_SIZE - self->count)) {
-                for (j=0; j<(msg_len-i); ++j) {
+                for (j = 0; j < (msg_len - i); ++j) {
                     out_buf[i + j] = self->iv[self->count + j] ^ msg[i + j];
                 }
                 self->count += msg_len - i;
@@ -363,7 +385,7 @@ blowfish_encrypt(blowfish_state *self,
                 continue;
             }
 
-            for (j=0; j < BLOWFISH_BLOCK_SIZE - self->count; ++j) {
+            for (j = 0; j < BLOWFISH_BLOCK_SIZE - self->count; ++j) {
                 out_buf[i + j] = self->iv[self->count + j] ^ msg[i + j];
             }
             i += BLOWFISH_BLOCK_SIZE - self->count;
@@ -374,20 +396,19 @@ blowfish_encrypt(blowfish_state *self,
             self->count = 0;
         }
         break;
-	case MODE_CTR:
-	default:
+    case MODE_CTR:
+    default:
         on_error(error_context, "mode %d is not implemented", self->mode);
-		free(out_buf);
+        free(out_buf);
         *out_len = 0;
-		return NULL;
-	}
-	return out_buf;
+        return NULL;
+    }
+    return out_buf;
 }
 
-uint8_t*
-blowfish_decrypt(blowfish_state *self,
-                 uint8_t const *msg, size_t msg_len, size_t *out_len,
-                 error_function on_error, void *error_context)
+uint8_t *
+blowfish_decrypt(blowfish_state *self, uint8_t const *msg, size_t msg_len,
+                 size_t *out_len, error_function on_error, void *error_context)
 {
     uint8_t *out_buf = NULL;
     size_t i, j;
@@ -404,14 +425,15 @@ blowfish_decrypt(blowfish_state *self,
 
     if (self->mode == MODE_CTR || self->mode == MODE_OFB) {
         /* these are symmetric so reuse the encryption bits */
-        return blowfish_encrypt(self, msg, msg_len, out_len,
-                                on_error, error_context);
+        return blowfish_encrypt(self, msg, msg_len, out_len, on_error,
+                                error_context);
     }
 
     if (self->mode == MODE_CFB) {
         if (msg_len % (self->segment_size / 8)) {
             on_error(error_context,
-                     "Ciphertext must be a multiple of segment size %d in length",
+                     "Ciphertext must be a multiple of segment "
+                     "size %d in length",
                      (self->segment_size / 8));
             return NULL;
         }
@@ -420,27 +442,27 @@ blowfish_decrypt(blowfish_state *self,
         return NULL;
     }
 
-    if (!(out_buf = (uint8_t*)malloc(msg_len))) {
+    if (!(out_buf = (uint8_t *)malloc(msg_len))) {
         return NULL;
     }
     *out_len = msg_len;
 
     switch (self->mode) {
     case MODE_CBC:
-        for (i=0; i<msg_len; i+=BLOWFISH_BLOCK_SIZE) {
+        for (i = 0; i < msg_len; i += BLOWFISH_BLOCK_SIZE) {
             memcpy(self->old_cipher, self->iv, BLOWFISH_BLOCK_SIZE);
-            block_decrypt(self, msg+i, &temp[0]);
-            for (j=0; j < BLOWFISH_BLOCK_SIZE; ++j) {
-                out_buf[i+j] = temp[j] ^ self->iv[j];
-                self->iv[j] = msg[i+j];
+            block_decrypt(self, msg + i, &temp[0]);
+            for (j = 0; j < BLOWFISH_BLOCK_SIZE; ++j) {
+                out_buf[i + j] = temp[j] ^ self->iv[j];
+                self->iv[j] = msg[i + j];
             }
         }
         break;
     case MODE_CFB:
-        for (i=0; i<msg_len; i+=(self->segment_size/8)) {
+        for (i = 0; i < msg_len; i += (self->segment_size / 8)) {
             block_encrypt(self, &self->iv[0], &temp[0]);
-            for (j=0; j<self->segment_size/8; ++j) {
-                out_buf[i+j] = msg[i+j] ^ temp[j];
+            for (j = 0; j < self->segment_size / 8; ++j) {
+                out_buf[i + j] = msg[i + j] ^ temp[j];
             }
             if (self->segment_size == (BLOWFISH_BLOCK_SIZE * 8)) {
                 memcpy(&self->iv[0], &msg[i], BLOWFISH_BLOCK_SIZE);
@@ -454,7 +476,7 @@ blowfish_decrypt(blowfish_state *self,
         }
         break;
     case MODE_ECB:
-        for (i=0; i<msg_len; i+=BLOWFISH_BLOCK_SIZE) {
+        for (i = 0; i < msg_len; i += BLOWFISH_BLOCK_SIZE) {
             block_decrypt(self, &msg[i], &out_buf[i]);
         }
         break;

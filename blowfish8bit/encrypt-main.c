@@ -17,8 +17,8 @@ main(int argc, char *argv[])
     blowfish_mode mode = get_mode_or_fail(argv[1]);
     uint8_t *key = from_hex_or_fail(argv[2], &key_len);
     uint8_t *iv = from_hex_or_fail(argv[3], &iv_len);
-    blowfish_state *state = blowfish_new(key, key_len, iv, iv_len, mode, 0,
-                                         &report_error, stderr);
+    blowfish_state *state =
+        blowfish_new(key, key_len, iv, iv_len, mode, 0, &report_error, stderr);
     char plaintext[512];
     if (state != NULL) {
         printf("Plain text: ");
@@ -28,9 +28,9 @@ main(int argc, char *argv[])
             char *eos = &plaintext[strlen(plaintext) - 1];
             *eos = '\0';
 
-            uint8_t *ciphertext = blowfish_encrypt(state, (uint8_t*)&plaintext,
-                                                   eos - &plaintext[0], &cipher_len,
-                                                   &report_error, stderr);
+            uint8_t *ciphertext = blowfish_encrypt(
+                state, (uint8_t *)&plaintext, eos - &plaintext[0], &cipher_len,
+                &report_error, stderr);
             if (ciphertext) {
                 hexdump(stdout, ciphertext, cipher_len);
                 free(ciphertext);

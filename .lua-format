@@ -1,0 +1,3 @@
+single_quote_to_double_quote: true
+align_args: true
+extra_sep_at_table_end: true
