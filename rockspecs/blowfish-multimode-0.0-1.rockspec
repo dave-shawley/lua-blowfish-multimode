@@ -19,7 +19,7 @@ dependencies = {
 build = {
     type = "builtin",
     modules = {
-        ["blowfish"] = {"blowfish8bit/lua_blowfish.c", "blowfish8bit/blowfish.c"}
+        ["blowfish"] = {"src/lua_blowfish.c", "src/blowfish.c"}
     }
 }
 test = {}
