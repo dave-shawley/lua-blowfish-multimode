@@ -1,0 +1,21 @@
+#!/usr/bin/env sh
+
+if test -e build.ninja
+then
+	ninja -t clean -g
+fi
+
+if test -e Makefile
+then
+	make clean
+fi
+
+rm -fr build.ninja Makefile *.rock
+rm -f bf-decrypt bf-encrypt blowfish.so libblowfish-static.a
+find . -name '*.o' -delete
+
+rm -fr .cmake .ninja_* CMakeCache.txt CMakeFiles CTest* Dart* Testing cmake-build* cmake_install.cmake
+
+cd tests
+rm -f *_tests
+rm -fr Makefile CMakeFiles CTest* Testing cmake_install.cmake
