@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.26)
 project(blowfish_8bit
         LANGUAGES C
         VERSION 0.0.1)
+include(CTest)
+if (BUILD_TESTING)
+    add_subdirectory(./tests)
+endif (BUILD_TESTING)
 
 set(CMAKE_C_STANDARD 11)
 
@@ -13,6 +17,11 @@ set_target_properties(blowfish PROPERTIES
         PREFIX ""
         OUTPUT_NAME blowfish
         SUFFIX .so
+)
+
+add_library(blowfish-static STATIC
+        ${CMAKE_SOURCE_DIR}/src/blowfish.c
+        ${CMAKE_SOURCE_DIR}/src/lua_blowfish.c
 )
 
 add_executable(bf-decrypt
@@ -27,6 +36,7 @@ add_executable(bf-encrypt
 
 find_package(Lua REQUIRED)
 target_include_directories(blowfish PRIVATE ${LUA_INCLUDE_DIR})
+target_include_directories(blowfish-static PRIVATE ${LUA_INCLUDE_DIR})
 install(TARGETS blowfish DESTINATION lib/lua/${LUA_VERSION_MAJOR}.${LUA_VERSION_MINOR})
 install(TARGETS bf-decrypt bf-encrypt DESTINATION bin)
 

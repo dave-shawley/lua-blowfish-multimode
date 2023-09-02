@@ -5,6 +5,7 @@
 /bf-encrypt
 /cmake-build-*/
 /cmake_install.cmake
+**/*.a
 **/*.o
 **/*.so
 **/*.rock
