@@ -2,6 +2,7 @@
 #define BLOWFISH_8BIT_BLOWFISH_H
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #define BLOWFISH_BLOCK_SIZE 8
 

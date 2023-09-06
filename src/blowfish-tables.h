@@ -1,5 +1,4 @@
 /*
- *
  *  Blowfish-tables.h : Initial-value tables for Blowfish
  *
  * Written in 2008 by Dwayne C. Litzenberger <dlitz@dlitz.net>
@@ -22,6 +21,8 @@
  *
  * Country of origin: Canada
  */
+#include <stdint.h>
+
 #ifndef BLOWFISH_TABLES_H
 #    define BLOWFISH_TABLES_H
 
