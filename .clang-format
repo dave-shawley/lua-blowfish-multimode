@@ -42,12 +42,12 @@ IndentGotoLabels: false
 IndentPPDirectives: AfterHash
 IndentWidth: 4
 IndentWrappedFunctionNames: false
-InsertBraces: true
-InsertNewlineAtEOF: true
+#InsertBraces: true
+#InsertNewlineAtEOF: true
 JavaScriptQuotes: Double
 JavaScriptWrapImports: true
 KeepEmptyLinesAtTheStartOfBlocks: false
-LineEnding: LF
+#LineEnding: LF
 NamespaceIndentation: Inner
 PackConstructorInitializers: BinPack
 PointerAlignment: Right
