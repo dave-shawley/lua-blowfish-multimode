@@ -1,0 +1,109 @@
+name: Test
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+
+  lua-setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: clang-format
+        run: clang-format --dry-run -Werror src/*.c src/*.h
+
+      - name: lua environment cache
+        id: lua-cache
+        uses: actions/cache@v3
+        with:
+          key: lua-5.1-busted-luaformatter
+          path: |
+            ~/.lua
+
+      - name: lua setup
+        if: ${{ steps.lua-cache.outputs.cache-hit != 'true' }}
+        run: |
+          curl -sSLOf https://www.lua.org/ftp/lua-5.1.5.tar.gz
+          tar xfz lua-5.1.5.tar.gz
+          cd lua-5.1.5
+          make linux
+          make install INSTALL_TOP=$HOME/.lua
+          cd ..
+
+          export PATH=$HOME/.lua/bin:$PATH
+          curl -sSLOf https://luarocks.org/releases/luarocks-3.9.2.tar.gz
+          tar xfz luarocks-3.9.2.tar.gz
+          cd luarocks-3.9.2
+          ./configure --prefix=$HOME/.lua
+          make
+          make install
+
+      - name: lua path
+        run: |
+          echo "$HOME/.lua/bin" >> $GITHUB_PATH
+
+      - name: install lua tools
+        if: ${{ steps.lua-cache.outputs.cache-hit != 'true' }}
+        run: |
+          luarocks install busted
+          luarocks install --server=https://luarocks.org/dev luaformatter
+
+  lint:
+    needs: lua-setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+
+      - name: clang-format
+        run: clang-format --dry-run -Werror src/*.c src/*.h
+
+      - name: lua environment cache
+        id: lua-cache
+        uses: actions/cache@v3
+        with:
+          key: lua-5.1-busted-luaformatter
+          path: |
+            ~/.lua
+
+      - name: lua path
+        run: |
+          echo "$HOME/.lua/bin" >> $GITHUB_PATH
+
+      - name: lua format
+        run: |
+          lua-format --check --verbose spec/*.lua
+
+  test:
+    needs: lua-setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+
+      - name: lua environment cache
+        id: lua-cache
+        uses: actions/cache@v3
+        with:
+          key: lua-5.1-busted-luaformatter
+          path: |
+            ~/.lua
+
+      - name: lua path
+        run: |
+          echo "$HOME/.lua/bin" >> $GITHUB_PATH
+
+      - name: build
+        run: |
+          export LUA_DIR="$HOME/.lua"
+          cmake -G 'Unix Makefiles' -DCMAKE_BUILD_TYPE=Release .
+          make
+
+      - name: c tests
+        run: ctest -C Release
+
+      - name: lua tests
+        run: busted

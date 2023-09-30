@@ -1,0 +1,24 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: rock
+
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          prerelease: false
+          files: |
+            LICENSE
+            *.rock

@@ -62,7 +62,7 @@ test_ecb_encryption()
     assert_true(cipher_len == sizeof(ciphertext),
                 "encrypt produced the wrong number of bytes");
     assert_bytes_equal(cipher, &ciphertext[0], sizeof(ciphertext),
-                       "encryption produced unexpected result", __FILE_NAME__,
+                       "encryption produced unexpected result", __FILE__,
                        __LINE__);
     free(cipher);
 }
@@ -95,7 +95,7 @@ test_ecb_decryption()
     assert_true(decrypted_len == sizeof(plaintext),
                 "decrypt produced the wrong number of bytes");
     assert_bytes_equal(decrypted, &plaintext[0], sizeof(plaintext),
-                       "decryption produced unexpected result", __FILE_NAME__,
+                       "decryption produced unexpected result", __FILE__,
                        __LINE__);
     free(decrypted);
 }

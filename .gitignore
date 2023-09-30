@@ -1,4 +1,5 @@
 /.*
+!/.github
 /bf-decrypt
 /bf-encrypt
 /tests/cbc_tests
