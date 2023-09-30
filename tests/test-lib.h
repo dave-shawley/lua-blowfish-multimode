@@ -13,12 +13,12 @@ struct error_context {
     char const *file;
     int line_no;
 };
-#define HERE (&(struct error_context){__FILE_NAME__, __LINE__})
+#define HERE (&(struct error_context){__FILE__, __LINE__})
 extern void on_error(void *, char const *, ...);
 
 extern void assert_condition(bool, char const *, char const *, int);
-#define assert_true(c, m) assert_condition((c), m, __FILE_NAME__, __LINE__)
-#define assert_false(c, m) assert_condition(!(c), m, __FILE_NAME__, __LINE__)
+#define assert_true(c, m) assert_condition((c), m, __FILE__, __LINE__)
+#define assert_false(c, m) assert_condition(!(c), m, __FILE__, __LINE__)
 
 extern void assert_bytes_equal(uint8_t const *actual, uint8_t const *expected,
                                size_t, char const *, char const *, int);
