@@ -1,4 +1,4 @@
-name: Test
+name: Build
 
 on:
   pull_request:
@@ -13,10 +13,6 @@ jobs:
   lua-setup:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
-      - name: clang-format
-        run: clang-format --dry-run -Werror src/*.c src/*.h
-
       - name: lua environment cache
         id: lua-cache
         uses: actions/cache@v3
@@ -53,32 +49,7 @@ jobs:
           luarocks install busted
           luarocks install --server=https://luarocks.org/dev luaformatter
 
-  lint:
-    needs: lua-setup
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v1
-
-      - name: clang-format
-        run: clang-format --dry-run -Werror src/*.c src/*.h
-
-      - name: lua environment cache
-        id: lua-cache
-        uses: actions/cache@v3
-        with:
-          key: lua-5.1-busted-luaformatter
-          path: |
-            ~/.lua
-
-      - name: lua path
-        run: |
-          echo "$HOME/.lua/bin" >> $GITHUB_PATH
-
-      - name: lua format
-        run: |
-          lua-format --check --verbose spec/*.lua
-
-  test:
+  build-rock:
     needs: lua-setup
     runs-on: ubuntu-latest
     steps:
@@ -100,10 +71,9 @@ jobs:
         run: |
           export LUA_DIR="$HOME/.lua"
           cmake -G 'Unix Makefiles' -DCMAKE_BUILD_TYPE=Release .
-          make
+          make rock
 
-      - name: c tests
-        run: ctest -C Release
-
-      - name: lua tests
-        run: busted
+      - uses: actions/upload-artifact@v3
+        with:
+          name: rock
+          path: "./*.rock"
