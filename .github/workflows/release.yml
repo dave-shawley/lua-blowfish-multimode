@@ -9,16 +9,23 @@ jobs:
 
   create-release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v1
 
-      - uses: actions/download-artifact@v3
+      - uses: dawidd6/action-download-artifact@v2
         with:
-          name: rock
+          workflow: build.yml
+          github_token: ${{secrets.GITHUB_TOKEN}}
+          commit: ${{ env.GITHUB_SHA }}
+          if_no_artifact_found: fail
 
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           prerelease: false
+          repo_token: ${{secrets.GITHUB_TOKEN}}
+          title: ${{github.ref_name}}
           files: |
             LICENSE
-            *.rock
+            rock/*.rock
