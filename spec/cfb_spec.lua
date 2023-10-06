@@ -68,26 +68,31 @@ describe("#CFB", function()
     describe("encryption", function()
         local keychain
         local segment_size = 32
+        local value, err
         setup(function()
             keychain = blowfish.new(MODE, KEY, IV, segment_size)
         end)
-        it("returns nil when given an empty string",
-           function() assert.equal(nil, keychain:encrypt("")) end)
+        it("returns nil when given an empty string", function()
+            value, err = keychain:encrypt("")
+            assert.is_nil(value)
+            assert.is_nil(err)
+        end)
         it("fails when given a non-string", function()
-            assert.has.errors(function() keychain:encrypt({}) end)
+            value, err = keychain:encrypt({})
+            assert.is_nil(value)
+            assert.is_not_nil(err)
         end)
         it("requires message that is multiple of segment_size", function()
             local segment_byte_size = segment_size / 8
             local message = "a"
             while (#message <= 64) do
+                value, err = keychain:encrypt(message)
                 if (#message % segment_byte_size == 0) then
-                    assert.has_no.errors(function()
-                        keychain:encrypt(message)
-                    end)
+                    assert.is_not_nil(value)
+                    assert.is_nil(err)
                 else
-                    assert.has.errors(function()
-                        keychain:encrypt(message)
-                    end)
+                    assert.is_nil(value)
+                    assert.is_not_nil(err)
                 end
                 message = message .. "b"
                 keychain:reset()

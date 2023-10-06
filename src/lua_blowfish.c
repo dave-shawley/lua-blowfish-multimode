@@ -9,6 +9,7 @@
 static const char TABLE_NAME[] = "Blowfish.state";
 static inline blowfish_state *extract_state(lua_State *);
 static void on_error(void *, char const *, ...);
+static void return_error(void *, char const *, ...);
 
 static int new_blowfish(lua_State *);
 static int decrypt(lua_State *);
@@ -147,14 +148,26 @@ encrypt(lua_State *L)
     uint8_t *encrypted;
     size_t msg_len, enc_len;
 
-    msg = luaL_checklstring(L, 2, &msg_len);
+    if (!lua_isstring(L, 2)) {
+        lua_pushnil(L);
+        return_error(L,
+                     "bad argument #1 to 'encrypt' (string expected, got %s)",
+                     lua_typename(L, lua_type(L, 2)));
+        return 2;
+    }
+
+    msg = lua_tolstring(L, 2, &msg_len);
     if (msg_len == 0) {
         lua_pushnil(L);
     } else {
         encrypted = blowfish_encrypt(state, (uint8_t const *)&msg[0], msg_len,
-                                     &enc_len, on_error, L);
-        lua_pushlstring(L, (char const *)encrypted, enc_len);
-        free(encrypted);
+                                     &enc_len, return_error, L);
+        if (encrypted) {
+            lua_pushlstring(L, (char const *)encrypted, enc_len);
+            free(encrypted);
+        } else {
+            return 2;
+        }
     }
 
     return 1;
@@ -186,4 +199,16 @@ on_error(void *state, char const *fmt, ...)
     lua_pushvfstring(L, fmt, ap);
     va_end(ap);
     lua_error(L);
+}
+
+static void
+return_error(void *state, char const *fmt, ...)
+{
+    lua_State *L = (lua_State *)state;
+    va_list ap;
+
+    lua_pushnil(L);
+    va_start(ap, fmt);
+    lua_pushvfstring(L, fmt, ap);
+    va_end(ap);
 }
