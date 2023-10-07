@@ -58,14 +58,6 @@ test_cfb_encryption()
     assert_true(cipher_len == 0, "encrypt should set cipher length to zero");
 
     blowfish_reset(&state);
-    cipher = blowfish_encrypt(&state, &plaintext[0], sizeof(plaintext) - 1,
-                              &cipher_len, NULL, NULL);
-    assert_true(cipher == NULL,
-                "encrypting message of non segment size length should fail");
-    assert_true(cipher_len == 0,
-                "encrypting message of non segment size length should fail");
-
-    blowfish_reset(&state);
     cipher = blowfish_encrypt(&state, &plaintext[0], sizeof(plaintext),
                               &cipher_len, &on_error, HERE);
     assert_true(cipher != NULL, "encrypt failed unexpectedly");
@@ -74,6 +66,16 @@ test_cfb_encryption()
     assert_bytes_equal(cipher, &ciphertext[0], sizeof(ciphertext),
                        "encryption produced unexpected result", __FILE__,
                        __LINE__);
+
+    blowfish_reset(&state);
+    state.pkcs7padding = false;
+    cipher = blowfish_encrypt(&state, &plaintext[0], sizeof(plaintext) - 1,
+                              &cipher_len, NULL, NULL);
+    assert_true(cipher == NULL,
+                "encrypting message of non segment size length should fail");
+    assert_true(cipher_len == 0,
+                "encrypting message of non segment size length should fail");
+
     free(cipher);
 }
 
@@ -95,11 +97,6 @@ test_cfb_decryption()
                 "decrypting zero length message returns NULL");
     assert_true(decrypted_len == 0, "decrypt should set cipher length to zero");
 
-    decrypted = blowfish_decrypt(&state, &ciphertext[0], 13, &decrypted_len,
-                                 NULL, NULL);
-    assert_true(decrypted == NULL,
-                "decrypting non-segment size aligned message fails");
-
     blowfish_reset(&state);
     decrypted = blowfish_decrypt(&state, &ciphertext[0], sizeof(ciphertext),
                                  &decrypted_len, &on_error, HERE);
@@ -109,6 +106,14 @@ test_cfb_decryption()
     assert_bytes_equal(decrypted, &plaintext[0], sizeof(plaintext),
                        "decryption produced unexpected result", __FILE__,
                        __LINE__);
+
+    blowfish_reset(&state);
+    state.pkcs7padding = false;
+    decrypted = blowfish_decrypt(&state, &ciphertext[0], 13, &decrypted_len,
+                                 NULL, NULL);
+    assert_true(decrypted == NULL,
+                "decrypting non-segment size aligned message fails");
+
     free(decrypted);
 }
 

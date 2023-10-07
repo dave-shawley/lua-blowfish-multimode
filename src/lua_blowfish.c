@@ -16,6 +16,8 @@ static int decrypt(lua_State *);
 static int encrypt(lua_State *);
 static int reset(lua_State *);
 static int to_string(lua_State *);
+static int enable_pkcs7_padding(lua_State *L);
+static int disable_pkcs7_padding(lua_State *L);
 
 static const struct luaL_Reg functions[] = {
     {"new", new_blowfish},
@@ -23,8 +25,13 @@ static const struct luaL_Reg functions[] = {
 };
 
 static const struct luaL_Reg methods[] = {
-    {"decrypt", decrypt},      {"encrypt", encrypt}, {"reset", reset},
-    {"__tostring", to_string}, {NULL, NULL},
+    {"decrypt", decrypt},
+    {"disable_pkcs7_padding", disable_pkcs7_padding},
+    {"enable_pkcs7_padding", enable_pkcs7_padding},
+    {"encrypt", encrypt},
+    {"reset", reset},
+    {"__tostring", to_string},
+    {NULL, NULL},
 };
 
 static const struct {
@@ -150,6 +157,22 @@ decrypt(lua_State *L)
     }
 
     return 1;
+}
+
+static int
+disable_pkcs7_padding(lua_State *L)
+{
+    blowfish_state *state = extract_state(L);
+    state->pkcs7padding = false;
+    return 0;
+}
+
+static int
+enable_pkcs7_padding(lua_State *L)
+{
+    blowfish_state *state = extract_state(L);
+    state->pkcs7padding = true;
+    return 0;
 }
 
 static int

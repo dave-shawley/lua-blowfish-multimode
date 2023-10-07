@@ -62,6 +62,7 @@ describe("#ECB", function()
             assert.is_not_nil(err)
         end)
         it("requires message that is multiple of eight bytes", function()
+            keychain:disable_pkcs7_padding()
             local message = "a"
             while (#message <= 64) do
                 value, err = keychain:encrypt(message)
@@ -93,6 +94,7 @@ describe("#ECB", function()
             assert.is_not_nil(err)
         end)
         it("requires cipher-text that is multiple of eight bytes", function()
+            keychain:disable_pkcs7_padding()
             local ciphertext = "\0"
             while (#ciphertext <= 64) do
                 value, err = keychain:decrypt(ciphertext)

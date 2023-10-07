@@ -45,6 +45,10 @@
     } while (0)
 #define NUM_ELEMENTS(ary) (sizeof(ary) / sizeof(ary[0]))
 
+char const *MODE_STRING[] = {
+    "CBC", "CFB", "CTR", "ECB", "OFB",
+};
+
 static void
 default_error_func(void *context, char const *fmt, ...)
 {
@@ -249,6 +253,7 @@ blowfish_init(blowfish_state *self, uint8_t const *key, size_t key_len,
     }
 
     self->mode = mode;
+    self->pkcs7padding = true;
     self->segment_size = segment_size;
     self->count = BLOWFISH_BLOCK_SIZE;
     if (iv) {
@@ -312,25 +317,22 @@ blowfish_encrypt(blowfish_state *self, uint8_t const *msg, size_t msg_len,
     if (msg_len == 0) {
         return NULL;
     }
-    if (msg_len % BLOWFISH_BLOCK_SIZE) {
-        switch (self->mode) {
-        case MODE_CBC:
+
+    if (!self->pkcs7padding) {
+        if ((self->mode == MODE_CBC || self->mode == MODE_ECB)
+            && (msg_len % BLOWFISH_BLOCK_SIZE))
+        {
             on_error(error_context,
-                     "CBC mode requires input multiple of %d bytes",
-                     BLOWFISH_BLOCK_SIZE);
-            return NULL;
-        case MODE_ECB:
-            on_error(error_context,
-                     "ECB mode requires input multiple of %d bytes",
-                     BLOWFISH_BLOCK_SIZE);
+                     "%s mode requires input multiple of %d bytes",
+                     MODE_STRING[self->mode], BLOWFISH_BLOCK_SIZE);
             return NULL;
         }
-    }
-    if (self->mode == MODE_CFB && (msg_len % (self->segment_size / 8))) {
-        on_error(error_context,
-                 "CFB mode requires input strings multiple of %d bytes",
-                 self->segment_size / 8);
-        return NULL;
+        if (self->mode == MODE_CFB && (msg_len % (self->segment_size / 8))) {
+            on_error(error_context,
+                     "CFB mode requires input strings multiple of %d bytes",
+                     self->segment_size / 8);
+            return NULL;
+        }
     }
 
     out_buf = (uint8_t *)malloc(msg_len);
@@ -429,17 +431,22 @@ blowfish_decrypt(blowfish_state *self, uint8_t const *msg, size_t msg_len,
                                 error_context);
     }
 
-    if (self->mode == MODE_CFB) {
-        if (msg_len % (self->segment_size / 8)) {
+    if (!self->pkcs7padding) {
+        if ((self->mode == MODE_CBC || self->mode == MODE_ECB)
+            && (msg_len % BLOWFISH_BLOCK_SIZE))
+        {
+            on_error(error_context,
+                     "Ciphertext must be a multiple of block size");
+            return NULL;
+        }
+
+        if (self->mode == MODE_CFB && (msg_len % (self->segment_size / 8))) {
             on_error(error_context,
                      "Ciphertext must be a multiple of segment "
                      "size %d in length",
                      (self->segment_size / 8));
             return NULL;
         }
-    } else if (msg_len % BLOWFISH_BLOCK_SIZE) {
-        on_error(error_context, "Ciphertext must be a multiple of block size");
-        return NULL;
     }
 
     if (!(out_buf = (uint8_t *)malloc(msg_len))) {

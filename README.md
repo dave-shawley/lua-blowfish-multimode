@@ -83,6 +83,16 @@ This method will return `nil` for exactly one of the return slots. If an error o
 slot will be `nil` and the second contains an error message. Otherwise, the first slot is the decrypted
 text and the second is `nil`.
 
+### Blowfish:disable_pkcs7_padding
+
+PKCS#7 padding is enabled by default for block-based alternatives. If your ciphertext blobs do not include
+padding, then call this method to disable it.
+
+### Blowfish:enable_pkcs7_padding
+
+PKCS#7 padding is enabled by default for block-based alternatives. You will only need this method when you
+have explicitly disabled padding somewhere.
+
 ### Blowfish:reset
 
 Reset a context for additional processing.

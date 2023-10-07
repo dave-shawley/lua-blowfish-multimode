@@ -16,6 +16,7 @@ typedef enum {
 
 typedef struct {
     blowfish_mode mode;
+    bool pkcs7padding;
     unsigned int segment_size;
     unsigned int count;
     uint8_t iv[BLOWFISH_BLOCK_SIZE];

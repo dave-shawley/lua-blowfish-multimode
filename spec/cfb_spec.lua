@@ -83,6 +83,7 @@ describe("#CFB", function()
             assert.is_not_nil(err)
         end)
         it("requires message that is multiple of segment_size", function()
+            keychain:disable_pkcs7_padding()
             local segment_byte_size = segment_size / 8
             local message = "a"
             while (#message <= 64) do
@@ -118,6 +119,7 @@ describe("#CFB", function()
             assert.is_not_nil(err)
         end)
         it("requires cipher-text that is multiple of segment_size", function()
+            keychain:disable_pkcs7_padding()
             local segment_byte_size = segment_size / 8
             local ciphertext = "\0"
             while (#ciphertext <= 64) do
