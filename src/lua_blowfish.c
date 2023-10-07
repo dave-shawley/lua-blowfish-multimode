@@ -127,14 +127,26 @@ decrypt(lua_State *L)
     uint8_t *decrypted;
     size_t msg_len, dec_len;
 
-    msg = luaL_checklstring(L, 2, &msg_len);
+    if (!lua_isstring(L, 2)) {
+        lua_pushnil(L);
+        return_error(L,
+                     "bad argument #1 to 'decrypt' (string expected, got %s)",
+                     lua_typename(L, lua_type(L, 2)));
+        return 2;
+    }
+
+    msg = lua_tolstring(L, 2, &msg_len);
     if (msg_len == 0) {
         lua_pushnil(L);
     } else {
         decrypted = blowfish_decrypt(state, (uint8_t const *)&msg[0], msg_len,
-                                     &dec_len, on_error, L);
-        lua_pushlstring(L, (char const *)decrypted, dec_len);
-        free(decrypted);
+                                     &dec_len, return_error, L);
+        if (decrypted != NULL) {
+            lua_pushlstring(L, (char const *)decrypted, dec_len);
+            free(decrypted);
+        } else {
+            return 2;
+        }
     }
 
     return 1;

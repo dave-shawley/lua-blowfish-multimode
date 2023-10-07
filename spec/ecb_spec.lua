@@ -80,23 +80,28 @@ describe("#ECB", function()
 
     describe("decryption", function()
         local keychain
+        local value, err
         setup(function() keychain = blowfish.new(MODE, KEY) end)
-        it("returns nil when given an empty string",
-           function() assert.equal(nil, keychain:decrypt("")) end)
+        it("returns nil when given an empty string", function()
+            value, err = keychain:decrypt("")
+            assert.is_nil(value)
+            assert.is_nil(err)
+        end)
         it("fails when given a non-string", function()
-            assert.has.errors(function() keychain:decrypt({}) end)
+            value, err = keychain:decrypt({})
+            assert.is_nil(value)
+            assert.is_not_nil(err)
         end)
         it("requires cipher-text that is multiple of eight bytes", function()
             local ciphertext = "\0"
             while (#ciphertext <= 64) do
+                value, err = keychain:decrypt(ciphertext)
                 if (#ciphertext % 8 == 0) then
-                    assert.has_no.errors(function()
-                        keychain:decrypt(ciphertext)
-                    end)
+                    assert.is_not_nil(value)
+                    assert.is_nil(err)
                 else
-                    assert.has.errors(function()
-                        keychain:decrypt(ciphertext)
-                    end)
+                    assert.is_nil(value)
+                    assert.is_not_nil(err)
                 end
                 ciphertext = ciphertext .. "\0"
                 keychain:reset()
