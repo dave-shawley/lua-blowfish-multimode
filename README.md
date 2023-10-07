@@ -39,12 +39,13 @@ print(plain_text)  -- message to encrypt
 
 Creates a new context or fail.
 
-| Parameter             | Type   | Description                                                  |
-|-----------------------|--------|--------------------------------------------------------------|
-| mode                  | number | selects the processing mode                                  |
-| key                   | string | encryption key between 4 and 56 bytes                        |
-| initialization vector | string | bytes to mix into the cipher blocks                          |
-| segment size          | number | number of bits in each segment this is only used in CBC mode |
+| Parameter             | Type   | Description                                                                               |
+|-----------------------|--------|-------------------------------------------------------------------------------------------|
+| mode                  | number | selects the processing mode                                                               |
+| key                   | string | encryption key between 4 and 56 bytes                                                     |
+| initialization vector | string | bytes to mix into the cipher blocks                                                       |
+| segment size          | number | number of bits in each segment this is only used in CBC mode, set to `nil` to use default |
+| disable padding       | bool   | set to `false` to disable PKCS#7 padding default                                          |
 
 This function fails by calling `error()` with a useful message. Use `pcall()` if you want to
 protect from configuration errors.

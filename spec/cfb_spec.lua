@@ -63,6 +63,12 @@ describe("#CFB", function()
                 end
             end
         end)
+        it("can disable padding", function()
+            local keychain = blowfish.new(MODE, KEY, IV, 16, false)
+            local value, err = keychain:encrypt("a")
+            assert.is_nil(value)
+            assert.is_not_nil(err)
+        end)
     end)
 
     describe("encryption", function()

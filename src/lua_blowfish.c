@@ -68,11 +68,15 @@ new_blowfish(lua_State *L)
     char const *key, *iv;
     size_t key_len, iv_len;
     lua_Integer mode, segment_size;
+    bool enable_padding = true;
 
     mode = luaL_checkinteger(L, 1);
     key = luaL_checklstring(L, 2, &key_len);
     iv = luaL_optlstring(L, 3, NULL, &iv_len);
     segment_size = luaL_optinteger(L, 4, 8);
+    if (!lua_isnil(L, 5)) {
+        enable_padding = lua_tonumber(L, 5);
+    }
 
     luaL_argcheck(L, key_len > 0, 2, "non-empty key required");
     luaL_argcheck(L, key_len >= 4 && key_len <= 56, 2,
@@ -111,6 +115,7 @@ new_blowfish(lua_State *L)
                       (size_t)iv_len, (blowfish_mode)mode, (int)segment_size,
                       on_error, L))
     {
+        state->pkcs7padding = enable_padding;
         luaL_getmetatable(L, TABLE_NAME);
         lua_setmetatable(L, -2);
         return 1;
