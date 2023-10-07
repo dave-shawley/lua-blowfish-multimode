@@ -55,21 +55,33 @@ describe("#OFB", function()
 
     describe("encryption", function()
         local keychain
+        local value, err
         setup(function() keychain = blowfish.new(MODE, KEY, IV) end)
-        it("returns nil when given an empty string",
-           function() assert.equal(nil, keychain:encrypt("")) end)
+        it("returns nil when given an empty string", function()
+            value, err = keychain:encrypt("")
+            assert.is_nil(value)
+            assert.is_nil(err)
+        end)
         it("fails when given a non-string", function()
-            assert.has.errors(function() keychain:encrypt({}) end)
+            value, err = keychain:encrypt({})
+            assert.is_nil(value)
+            assert.is_not_nil(err)
         end)
     end)
 
     describe("decryption", function()
         local keychain
+        local value, err
         setup(function() keychain = blowfish.new(MODE, KEY, IV) end)
-        it("returns nil when given an empty string",
-           function() assert.equal(nil, keychain:decrypt("")) end)
+        it("returns nil when given an empty string", function()
+            value, err = keychain:decrypt("")
+            assert.is_nil(value)
+            assert.is_nil(err)
+        end)
         it("fails when given a non-string", function()
-            assert.has.errors(function() keychain:decrypt({}) end)
+            value, err = keychain:decrypt({})
+            assert.is_nil(value)
+            assert.is_not_nil(err)
         end)
     end)
 

@@ -55,23 +55,28 @@ describe("#CBC", function()
 
     describe("encryption", function()
         local keychain
+        local value, err
         setup(function() keychain = blowfish.new(MODE, KEY, IV) end)
-        it("returns nil when given an empty string",
-           function() assert.equal(nil, keychain:encrypt("")) end)
+        it("returns nil when given an empty string", function()
+            value, err = keychain:encrypt("")
+            assert.is_nil(value)
+            assert.is_nil(err)
+        end)
         it("fails when given a non-string", function()
-            assert.has.errors(function() keychain:encrypt({}) end)
+            value, err = keychain:encrypt({})
+            assert.is_nil(value)
+            assert.is_not_nil(err)
         end)
         it("requires message that is multiple of 8 bytes", function()
             local message = "a"
             while (#message <= 64) do
+                value, err = keychain:encrypt(message)
                 if (#message % 8 == 0) then
-                    assert.has_no.errors(function()
-                        keychain:encrypt(message)
-                    end)
+                    assert.is_not_nil(value)
+                    assert.is_nil(err)
                 else
-                    assert.has.errors(function()
-                        keychain:encrypt(message)
-                    end)
+                    assert.is_nil(value)
+                    assert.is_not_nil(err)
                 end
                 message = message .. "b"
                 keychain:reset()
@@ -81,23 +86,28 @@ describe("#CBC", function()
 
     describe("decryption", function()
         local keychain
+        local value, err
         setup(function() keychain = blowfish.new(MODE, KEY, IV) end)
-        it("returns nil when given an empty string",
-           function() assert.equal(nil, keychain:decrypt("")) end)
+        it("returns nil when given an empty string", function()
+            value, err = keychain:decrypt("")
+            assert.is_nil(value)
+            assert.is_nil(err)
+        end)
         it("fails when given a non-string", function()
-            assert.has.errors(function() keychain:decrypt({}) end)
+            value, err = keychain:decrypt({})
+            assert.is_nil(value)
+            assert.is_not_nil(err)
         end)
         it("requires cipher-text that is multiple of 8 bytes", function()
             local ciphertext = "\0"
             while (#ciphertext <= 64) do
+                value, err = keychain:decrypt(ciphertext)
                 if (#ciphertext % 8 == 0) then
-                    assert.has_no.errors(function()
-                        keychain:decrypt(ciphertext)
-                    end)
+                    assert.is_not_nil(value)
+                    assert.is_nil(err)
                 else
-                    assert.has.errors(function()
-                        keychain:decrypt(ciphertext)
-                    end)
+                    assert.is_nil(value)
+                    assert.is_not_nil(err)
                 end
                 ciphertext = ciphertext .. "\0"
                 keychain:reset()
