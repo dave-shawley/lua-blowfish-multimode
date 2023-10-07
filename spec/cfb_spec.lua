@@ -88,7 +88,8 @@ describe("#CFB", function()
             assert.is_nil(value)
             assert.is_not_nil(err)
         end)
-        it("requires message that is multiple of segment_size", function()
+        it("requires message that is multiple of segment_size #pkcs-disabled",
+           function()
             keychain:disable_pkcs7_padding()
             local segment_byte_size = segment_size / 8
             local message = "a"
@@ -124,23 +125,25 @@ describe("#CFB", function()
             assert.is_nil(value)
             assert.is_not_nil(err)
         end)
-        it("requires cipher-text that is multiple of segment_size", function()
-            keychain:disable_pkcs7_padding()
-            local segment_byte_size = segment_size / 8
-            local ciphertext = "\0"
-            while (#ciphertext <= 64) do
-                value, err = keychain:decrypt(ciphertext)
-                if (#ciphertext % segment_byte_size == 0) then
-                    assert.is_not_nil(value)
-                    assert.is_nil(err)
-                else
-                    assert.is_nil(value)
-                    assert.is_not_nil(err)
+        it(
+            "requires cipher-text that is multiple of segment_size #pkcs7-disabled",
+            function()
+                keychain:disable_pkcs7_padding()
+                local segment_byte_size = segment_size / 8
+                local ciphertext = "\0"
+                while (#ciphertext <= 64) do
+                    value, err = keychain:decrypt(ciphertext)
+                    if (#ciphertext % segment_byte_size == 0) then
+                        assert.is_not_nil(value)
+                        assert.is_nil(err)
+                    else
+                        assert.is_nil(value)
+                        assert.is_not_nil(err)
+                    end
+                    ciphertext = ciphertext .. "\0"
+                    keychain:reset()
                 end
-                ciphertext = ciphertext .. "\0"
-                keychain:reset()
-            end
-        end)
+            end)
     end)
 
 end)

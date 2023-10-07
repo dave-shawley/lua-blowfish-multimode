@@ -73,7 +73,8 @@ describe("#CBC", function()
             assert.is_nil(value)
             assert.is_not_nil(err)
         end)
-        it("requires message that is multiple of 8 bytes", function()
+        it("requires message that is multiple of 8 bytes #pkcs7-disabled",
+           function()
             keychain:disable_pkcs7_padding()
             local message = "a"
             while (#message <= 64) do
@@ -105,7 +106,8 @@ describe("#CBC", function()
             assert.is_nil(value)
             assert.is_not_nil(err)
         end)
-        it("requires cipher-text that is multiple of 8 bytes", function()
+        it("requires cipher-text that is multiple of 8 bytes #pkcs7-disabled",
+           function()
             keychain:disable_pkcs7_padding()
             local ciphertext = "\0"
             while (#ciphertext <= 64) do
