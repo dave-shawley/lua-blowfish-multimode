@@ -73,6 +73,19 @@ describe("#CBC", function()
             assert.is_nil(value)
             assert.is_not_nil(err)
         end)
+        it("pads non block size messages", function()
+            keychain:enable_pkcs7_padding()
+            local pad_length
+            local message = "a"
+            while (#message <= 8) do
+                pad_length = 8 - (#message % 8)
+                value, err = keychain:encrypt(message)
+                assert.is_nil(err)
+                assert.is_not_nil(value)
+                assert.equal(#message + pad_length, #value)
+                message = message .. "a"
+            end
+        end)
         it("requires message that is multiple of 8 bytes #pkcs7-disabled",
            function()
             keychain:disable_pkcs7_padding()

@@ -308,6 +308,7 @@ blowfish_encrypt(blowfish_state *self, uint8_t const *msg, size_t msg_len,
     uint8_t temp[BLOWFISH_BLOCK_SIZE];
     size_t i, j;
     uint8_t *out_buf;
+    uint8_t padding_byte = 0; /* no padding */
 
     if (on_error == NULL) {
         on_error = &default_error_func;
@@ -318,7 +319,12 @@ blowfish_encrypt(blowfish_state *self, uint8_t const *msg, size_t msg_len,
         return NULL;
     }
 
-    if (!self->pkcs7padding) {
+    if (self->pkcs7padding) {
+        if (self->mode == MODE_CBC) {
+            padding_byte =
+                BLOWFISH_BLOCK_SIZE - (msg_len % BLOWFISH_BLOCK_SIZE);
+        }
+    } else {
         if ((self->mode == MODE_CBC || self->mode == MODE_ECB)
             && (msg_len % BLOWFISH_BLOCK_SIZE))
         {
@@ -335,19 +341,20 @@ blowfish_encrypt(blowfish_state *self, uint8_t const *msg, size_t msg_len,
         }
     }
 
-    out_buf = (uint8_t *)malloc(msg_len);
+    out_buf = (uint8_t *)malloc(msg_len + padding_byte);
     if (out_buf == NULL) {
         on_error(error_context, "failed to allocate buffer of %d bytes",
-                 *out_len);
+                 msg_len + padding_byte);
         return NULL;
     }
-    *out_len = msg_len;
+    *out_len = msg_len + padding_byte;
 
     switch (self->mode) {
     case MODE_CBC:
-        for (i = 0; i < msg_len; i += BLOWFISH_BLOCK_SIZE) {
+        for (i = 0; i < msg_len + padding_byte; i += BLOWFISH_BLOCK_SIZE) {
             for (j = 0; j < BLOWFISH_BLOCK_SIZE; ++j) {
-                temp[j] = msg[i + j] ^ self->iv[j];
+                uint8_t byte = (i + j) < msg_len ? msg[i + j] : padding_byte;
+                temp[j] = byte ^ self->iv[j];
             }
             block_encrypt(self, temp, out_buf + i);
             memcpy(self->iv, out_buf + i, BLOWFISH_BLOCK_SIZE);
@@ -415,6 +422,7 @@ blowfish_decrypt(blowfish_state *self, uint8_t const *msg, size_t msg_len,
     uint8_t *out_buf = NULL;
     size_t i, j;
     uint8_t temp[BLOWFISH_BLOCK_SIZE];
+    uint8_t padding_byte = 0; /* no padding */
 
     if (on_error == NULL) {
         on_error = &default_error_func;
@@ -463,6 +471,31 @@ blowfish_decrypt(blowfish_state *self, uint8_t const *msg, size_t msg_len,
                 out_buf[i + j] = temp[j] ^ self->iv[j];
                 self->iv[j] = msg[i + j];
             }
+        }
+        if (self->pkcs7padding) {
+            uint8_t padding_length = out_buf[msg_len - 1];
+            if (padding_length >= msg_len) {
+                on_error(error_context, "Invalid PKCS padding value %02x",
+                         padding_length);
+                free(out_buf);
+                *out_len = 0;
+                return NULL;
+            }
+            for (uint8_t *byte_ptr = &out_buf[msg_len - padding_length],
+                         *end_ptr = &out_buf[msg_len - 1];
+                 byte_ptr != end_ptr; ++byte_ptr)
+            {
+                if (*byte_ptr != padding_length) {
+                    on_error(error_context,
+                             "Invalid PKCS padding value at offset %u, "
+                             "expected %02x, found %02x",
+                             byte_ptr - out_buf, padding_length, *byte_ptr);
+                    free(out_buf);
+                    *out_len = 0;
+                    return NULL;
+                }
+            }
+            *out_len -= padding_length;
         }
         break;
     case MODE_CFB:
