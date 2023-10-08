@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "blowfish.h"
+
 extern int error_counter;
 
 extern uint8_t const EIGHT_BYTES[8];
@@ -22,5 +24,20 @@ extern void assert_condition(bool, char const *, char const *, int);
 
 extern void assert_bytes_equal(uint8_t const *actual, uint8_t const *expected,
                                size_t, char const *, char const *, int);
+extern void assert_encrypted_value(blowfish_state *state,
+                                   uint8_t const *plaintext, size_t plain_len,
+                                   uint8_t const *ciphertext, size_t cipher_len,
+                                   struct error_context *context);
+extern void assert_encryption_fails(blowfish_state *state,
+                                    uint8_t const *plaintext, size_t plain_len,
+                                    struct error_context *context);
+extern void assert_decrypted_value(blowfish_state *state,
+                                   uint8_t const *ciphertext, size_t cipher_len,
+                                   uint8_t const *plaintext, size_t plain_len,
+                                   struct error_context *context);
+extern void assert_decryption_fails(blowfish_state *state,
+                                    uint8_t const *ciphertext,
+                                    size_t cipher_len,
+                                    struct error_context *context);
 
 #endif /*!BLOWFISH_TEST_LIB_H*/

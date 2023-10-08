@@ -54,3 +54,97 @@ assert_bytes_equal(uint8_t const *actual, uint8_t const *expected, size_t len,
         exit(EXIT_FAILURE);
     }
 }
+
+void
+assert_encrypted_value(blowfish_state *state, uint8_t const *plaintext,
+                       size_t plain_len, uint8_t const *ciphertext,
+                       size_t cipher_len, struct error_context *context)
+{
+    uint8_t *actual;
+    size_t actual_len;
+
+    blowfish_reset(state);
+    actual = blowfish_encrypt(state, plaintext, plain_len, &actual_len,
+                              &on_error, context);
+    if (ciphertext == NULL) {
+        assert_condition(actual == NULL,
+                         "encrypting zero length message returns NULL",
+                         context->file, context->line_no);
+        assert_condition(actual_len == 0,
+                         "encrypting zero length messages produces zero bytes",
+                         context->file, context->line_no);
+    } else {
+        assert_condition(actual != NULL, "encryption failed unexpectedly",
+                         context->file, context->line_no);
+        assert_condition(actual_len == cipher_len,
+                         "encrypt produced the wrong number of bytes",
+                         context->file, context->line_no);
+        assert_bytes_equal(actual, ciphertext, cipher_len,
+                           "encryption produced unexpected result",
+                           context->file, context->line_no);
+        free(actual);
+    }
+}
+
+void
+assert_encryption_fails(blowfish_state *state, uint8_t const *plaintext,
+                        size_t plain_len, struct error_context *context)
+{
+    uint8_t *actual;
+    size_t actual_len;
+
+    blowfish_reset(state);
+    actual =
+        blowfish_encrypt(state, plaintext, plain_len, &actual_len, NULL, NULL);
+    assert_condition(actual == NULL, "encryption should have failed",
+                     context->file, context->line_no);
+    assert_condition(actual_len == 0, "encryption should have failed",
+                     context->file, context->line_no);
+}
+
+void
+assert_decrypted_value(blowfish_state *state, uint8_t const *ciphertext,
+                       size_t cipher_len, uint8_t const *plaintext,
+                       size_t plain_len, struct error_context *context)
+{
+    uint8_t *actual;
+    size_t actual_len;
+
+    blowfish_reset(state);
+    actual = blowfish_decrypt(state, ciphertext, cipher_len, &actual_len,
+                              &on_error, context);
+    if (plaintext == NULL) {
+        assert_condition(actual == NULL,
+                         "decrypting zero length message returns NULL",
+                         context->file, context->line_no);
+        assert_condition(actual_len == 0,
+                         "decrypting zero length messages produces zero bytes",
+                         context->file, context->line_no);
+    } else {
+        assert_condition(actual != NULL, "decryption failed unexpectedly",
+                         context->file, context->line_no);
+        assert_condition(actual_len == plain_len,
+                         "decrypt produced the wrong number of bytes",
+                         context->file, context->line_no);
+        assert_bytes_equal(actual, plaintext, plain_len,
+                           "decryption produced unexpected result",
+                           context->file, context->line_no);
+        free(actual);
+    }
+}
+
+void
+assert_decryption_fails(blowfish_state *state, uint8_t const *ciphertext,
+                        size_t cipher_len, struct error_context *context)
+{
+    uint8_t *actual;
+    size_t actual_len;
+
+    blowfish_reset(state);
+    actual = blowfish_decrypt(state, ciphertext, cipher_len, &actual_len, NULL,
+                              NULL);
+    assert_condition(actual == NULL, "decryption should have failed",
+                     context->file, context->line_no);
+    assert_condition(actual_len == 0, "decryption should have failed",
+                     context->file, context->line_no);
+}

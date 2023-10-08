@@ -1,4 +1,3 @@
-#include <stdlib.h>
 #include <string.h>
 
 #include "blowfish.h"
@@ -57,8 +56,6 @@ test_cbc_parameter_checking()
 static void
 test_cbc_encryption()
 {
-    uint8_t *cipher;
-    size_t cipher_len;
     blowfish_state state;
 
     assert_true(blowfish_init(&state, &key[0], sizeof(key), &init_vector[0],
@@ -66,48 +63,20 @@ test_cbc_encryption()
                               HERE),
                 "blowfish_init failed unexpectedly for CBC");
 
-    cipher = blowfish_encrypt(&state, NULL, 0, &cipher_len, &on_error, HERE);
-    assert_true(cipher == NULL, "encrypting zero length message returns NULL");
-    assert_true(cipher_len == 0, "encrypt should set cipher length to zero");
+    assert_encrypted_value(&state, NULL, 0, NULL, 0, HERE);
+    assert_encrypted_value(&state, &plaintext[0], sizeof(plaintext),
+                           &ciphertext[0], sizeof(ciphertext), HERE);
+    assert_encrypted_value(&state, &pkcs_plaintext[0], sizeof(pkcs_plaintext),
+                           &pkcs_ciphertext[0], sizeof(pkcs_ciphertext), HERE);
 
-    blowfish_reset(&state);
-    cipher = blowfish_encrypt(&state, &plaintext[0], sizeof(plaintext),
-                              &cipher_len, &on_error, HERE);
-    assert_true(cipher != NULL, "encrypt failed unexpectedly");
-    assert_true(cipher_len == sizeof(ciphertext),
-                "encrypt produced the wrong number of bytes");
-    assert_bytes_equal(cipher, &ciphertext[0], sizeof(ciphertext),
-                       "encryption produced unexpected result", __FILE__,
-                       __LINE__);
-
-    blowfish_reset(&state);
-    cipher =
-        blowfish_encrypt(&state, &pkcs_plaintext[0], sizeof(pkcs_plaintext),
-                         &cipher_len, &on_error, HERE);
-    assert_true(cipher != NULL, "encrypt failed unexpectedly for PKCS sample");
-    assert_true(cipher_len == sizeof(pkcs_ciphertext),
-                "encrypt produced the wrong number of bytes for PKCS sample");
-    assert_bytes_equal(cipher, &pkcs_ciphertext[0], sizeof(pkcs_ciphertext),
-                       "encryption produced unexpected result for PKCS sample",
-                       __FILE__, __LINE__);
-
-    blowfish_reset(&state);
     state.pkcs7padding = false;
-    cipher = blowfish_encrypt(&state, &plaintext[0], sizeof(plaintext) - 1,
-                              &cipher_len, NULL, NULL);
-    assert_true(cipher == NULL, "encrypting non-blocksize message should fail");
-    assert_true(cipher_len == 0,
-                "encrypting non-blocksize message should fail");
-
-    free(cipher);
+    assert_encryption_fails(&state, &plaintext[0], sizeof(plaintext) - 1, HERE);
 }
 
 static void
 test_cbc_decryption()
 {
     uint8_t incorrectly_padded[sizeof(plaintext) + BLOWFISH_BLOCK_SIZE];
-    uint8_t *decrypted;
-    size_t decrypted_len;
     blowfish_state state;
 
     assert_true(blowfish_init(&state, &key[0], sizeof(key), &init_vector[0],
@@ -115,51 +84,21 @@ test_cbc_decryption()
                               HERE),
                 "blowfish_init failed unexpectedly for CBC");
 
-    decrypted =
-        blowfish_decrypt(&state, NULL, 0, &decrypted_len, &on_error, HERE);
-    assert_true(decrypted == NULL,
-                "decrypting zero length message returns NULL");
-    assert_true(decrypted_len == 0, "decrypt should set cipher length to zero");
-
-    blowfish_reset(&state);
-    decrypted = blowfish_decrypt(&state, &ciphertext[0], sizeof(ciphertext),
-                                 &decrypted_len, &on_error, HERE);
-    assert_true(decrypted != NULL, "decrypt failed unexpectedly");
-    assert_true(decrypted_len == sizeof(plaintext),
-                "decrypt produced the wrong number of bytes");
-    assert_bytes_equal(decrypted, &plaintext[0], sizeof(plaintext),
-                       "decryption produced unexpected result", __FILE__,
-                       __LINE__);
-
-    blowfish_reset(&state);
-    decrypted =
-        blowfish_decrypt(&state, &pkcs_ciphertext[0], sizeof(pkcs_ciphertext),
-                         &decrypted_len, &on_error, HERE);
-    assert_true(decrypted != NULL, "decrypt failed unexpectedly");
-    assert_true(decrypted_len == sizeof(pkcs_plaintext),
-                "decrypt produced the wrong number of bytes");
-    assert_bytes_equal(decrypted, &pkcs_plaintext[0], sizeof(pkcs_plaintext),
-                       "decryption produced unexpected result", __FILE__,
-                       __LINE__);
+    assert_decrypted_value(&state, NULL, 0, NULL, 0, HERE);
+    assert_decrypted_value(&state, &ciphertext[0], sizeof(ciphertext),
+                           &plaintext[0], sizeof(plaintext), HERE);
+    assert_decrypted_value(&state, &pkcs_ciphertext[0], sizeof(pkcs_ciphertext),
+                           &pkcs_plaintext[0], sizeof(pkcs_plaintext), HERE);
 
     memcpy(&incorrectly_padded, &plaintext, sizeof(plaintext));
     for (size_t i = 0; i < BLOWFISH_BLOCK_SIZE; ++i) {
         incorrectly_padded[sizeof(plaintext) + i] = i;
     }
-    blowfish_reset(&state);
-    decrypted = blowfish_decrypt(&state, &incorrectly_padded[0],
-                                 sizeof(incorrectly_padded), &decrypted_len,
-                                 NULL, NULL);
-    assert_true(decrypted == NULL,
-                "decrypting incorrectly padded message fails");
+    assert_decryption_fails(&state, &incorrectly_padded[0],
+                            sizeof(incorrectly_padded), HERE);
 
-    blowfish_reset(&state);
     state.pkcs7padding = false;
-    decrypted = blowfish_decrypt(&state, &ciphertext[0], 13, &decrypted_len,
-                                 NULL, NULL);
-    assert_true(decrypted == NULL, "decrypting non-blocksize message fails");
-
-    free(decrypted);
+    assert_decryption_fails(&state, &ciphertext[0], 13, HERE);
 }
 
 int

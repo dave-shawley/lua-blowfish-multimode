@@ -47,8 +47,6 @@ test_ofb_parameter_checking()
 static void
 test_ofb_encryption()
 {
-    uint8_t *cipher;
-    size_t cipher_len;
     blowfish_state state;
 
     assert_true(blowfish_init(&state, &key[0], sizeof(key), &init_vector[0],
@@ -56,27 +54,14 @@ test_ofb_encryption()
                               HERE),
                 "blowfish_init failed unexpectedly for OFB");
 
-    cipher = blowfish_encrypt(&state, NULL, 0, &cipher_len, &on_error, HERE);
-    assert_true(cipher == NULL, "encrypting zero length message returns NULL");
-    assert_true(cipher_len == 0, "encrypt should set cipher length to zero");
-
-    blowfish_reset(&state);
-    cipher = blowfish_encrypt(&state, &plaintext[0], sizeof(plaintext),
-                              &cipher_len, &on_error, HERE);
-    assert_true(cipher != NULL, "encrypt failed unexpectedly");
-    assert_true(cipher_len == sizeof(ciphertext),
-                "encrypt produced the wrong number of bytes");
-    assert_bytes_equal(cipher, &ciphertext[0], sizeof(ciphertext),
-                       "encryption produced unexpected result", __FILE__,
-                       __LINE__);
-    free(cipher);
+    assert_encrypted_value(&state, NULL, 0, NULL, 0, HERE);
+    assert_encrypted_value(&state, &plaintext[0], sizeof(plaintext),
+                           &ciphertext[0], sizeof(ciphertext), HERE);
 }
 
 static void
 test_ofb_decryption()
 {
-    uint8_t *decrypted;
-    size_t decrypted_len;
     blowfish_state state;
 
     assert_true(blowfish_init(&state, &key[0], sizeof(key), &init_vector[0],
@@ -84,22 +69,9 @@ test_ofb_decryption()
                               HERE),
                 "blowfish_init failed unexpectedly for CBC");
 
-    decrypted =
-        blowfish_decrypt(&state, NULL, 0, &decrypted_len, &on_error, HERE);
-    assert_true(decrypted == NULL,
-                "decrypting zero length message returns NULL");
-    assert_true(decrypted_len == 0, "decrypt should set cipher length to zero");
-
-    blowfish_reset(&state);
-    decrypted = blowfish_decrypt(&state, &ciphertext[0], sizeof(ciphertext),
-                                 &decrypted_len, &on_error, HERE);
-    assert_true(decrypted != NULL, "decrypt failed unexpectedly");
-    assert_true(decrypted_len == sizeof(plaintext),
-                "decrypt produced the wrong number of bytes");
-    assert_bytes_equal(decrypted, &plaintext[0], sizeof(plaintext),
-                       "decryption produced unexpected result", __FILE__,
-                       __LINE__);
-    free(decrypted);
+    assert_decrypted_value(&state, NULL, 0, NULL, 0, HERE);
+    assert_decrypted_value(&state, &ciphertext[0], sizeof(ciphertext),
+                           &plaintext[0], sizeof(plaintext), HERE);
 }
 
 int
