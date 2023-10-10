@@ -130,6 +130,55 @@ block_decrypt(blowfish_state *self, uint8_t const *in, uint8_t *out)
     word_to_bytes(xR, out + 4);
 }
 
+/*
+ * Verify and remove PKCS#7 padding from a plaintext blob.
+ *
+ * @param self - blowfish decryption state
+ * @param plaintext - pointer to the decrypted plaintext buffer, unchanged
+ *                    if padding is correct; DEALLOCATED and set to NULL
+ *                    when padding is not correct
+ * @param plaintext_len - the length of the padded buffer on input,
+ *                        the unpadded length upon return
+ * @param on_error - function to call to report an error
+ * @param error_context - error context to pass along
+ */
+static void
+unpad(blowfish_state const *self, uint8_t **plaintext, size_t *plaintext_len,
+      error_function on_error, void *error_context)
+{
+    if (self->pkcs7padding) {
+        uint8_t *cipher = *plaintext;
+        size_t cipher_len = *plaintext_len;
+        uint8_t padding_length = cipher[cipher_len - 1];
+        if (padding_length >= cipher_len) {
+            free(cipher);
+            *plaintext = NULL;
+            *plaintext_len = 0;
+            on_error(error_context, "Invalid PKCS padding value %02x",
+                     padding_length);
+        } else {
+            *plaintext_len -= padding_length;
+            for (uint8_t *byte_ptr = &cipher[cipher_len - padding_length],
+                         *end_ptr = &cipher[cipher_len - 1];
+                 byte_ptr != end_ptr; ++byte_ptr)
+            {
+                if (*byte_ptr != padding_length) {
+                    uint8_t wrong_byte = *byte_ptr;
+                    size_t offset = byte_ptr - cipher;
+                    free(cipher);
+                    *plaintext = NULL;
+                    *plaintext_len = 0;
+                    on_error(error_context,
+                             "Invalid PKCS padding value at offset %u, "
+                             "expected %02x, found %02x",
+                             offset, padding_length, wrong_byte);
+                    break;
+                }
+            }
+        }
+    }
+}
+
 static bool
 verify_params(uint8_t const *key, size_t key_len, uint8_t const *iv,
               size_t iv_len, blowfish_mode mode, int *segment_size,
@@ -422,7 +471,6 @@ blowfish_decrypt(blowfish_state *self, uint8_t const *msg, size_t msg_len,
     uint8_t *out_buf = NULL;
     size_t i, j;
     uint8_t temp[BLOWFISH_BLOCK_SIZE];
-    uint8_t padding_byte = 0; /* no padding */
 
     if (on_error == NULL) {
         on_error = &default_error_func;
@@ -472,32 +520,9 @@ blowfish_decrypt(blowfish_state *self, uint8_t const *msg, size_t msg_len,
                 self->iv[j] = msg[i + j];
             }
         }
-        if (self->pkcs7padding) {
-            uint8_t padding_length = out_buf[msg_len - 1];
-            if (padding_length >= msg_len) {
-                on_error(error_context, "Invalid PKCS padding value %02x",
-                         padding_length);
-                free(out_buf);
-                *out_len = 0;
-                return NULL;
-            }
-            for (uint8_t *byte_ptr = &out_buf[msg_len - padding_length],
-                         *end_ptr = &out_buf[msg_len - 1];
-                 byte_ptr != end_ptr; ++byte_ptr)
-            {
-                if (*byte_ptr != padding_length) {
-                    on_error(error_context,
-                             "Invalid PKCS padding value at offset %u, "
-                             "expected %02x, found %02x",
-                             byte_ptr - out_buf, padding_length, *byte_ptr);
-                    free(out_buf);
-                    *out_len = 0;
-                    return NULL;
-                }
-            }
-            *out_len -= padding_length;
-        }
+        unpad(self, &out_buf, out_len, on_error, error_context);
         break;
+
     case MODE_CFB:
         for (i = 0; i < msg_len; i += (self->segment_size / 8)) {
             block_encrypt(self, &self->iv[0], &temp[0]);
