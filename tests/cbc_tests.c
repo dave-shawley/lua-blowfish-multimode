@@ -70,7 +70,8 @@ test_cbc_encryption()
                            &pkcs_ciphertext[0], sizeof(pkcs_ciphertext), HERE);
 
     state.pkcs7padding = false;
-    assert_encryption_fails(&state, &plaintext[0], sizeof(plaintext) - 1, HERE);
+    assert_encryption_fails(&state, &pkcs_plaintext[0], sizeof(pkcs_plaintext),
+                            HERE);
 }
 
 static void
