@@ -1,0 +1,23 @@
+#!/usr/bin/env sh
+PROFDIR=Testing/Coverage
+TESTS='cbc_tests cfb_tests context_tests ecb_tests ofb_tests'
+
+rm -f tests/*_test
+cmake -DCMAKE_BUILD_TYPE=Debug \
+      -DCMAKE_C_FLAGS='-O0 -fprofile-instr-generate -fcoverage-mapping' .
+
+cd tests
+rm -f $TESTS
+cd ..
+
+set -e
+mkdir -p "$PROFDIR"
+rm -f "$PROFDIR/*.prof*"
+make $TESTS
+for t in $TESTS
+do
+	LLVM_PROFILE_FILE="$PROFDIR/$t.profraw" tests/$t
+done
+llvm-profdata merge -sparse "$PROFDIR"/*.profraw -o "$PROFDIR/merged.profdata"
+llvm-cov report ./libblowfish-static.a -instr-profile "$PROFDIR/merged.profdata" --sources src/blowfish.c --show-branch-summary --show-functions
+llvm-cov show ./libblowfish-static.a -instr-profile "$PROFDIR/merged.profdata" --sources src/blowfish.c --format=html --show-branches=count --show-branch-summary > "$PROFDIR/blowfish.c.html"
