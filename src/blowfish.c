@@ -45,6 +45,10 @@
     } while (0)
 #define NUM_ELEMENTS(ary) (sizeof(ary) / sizeof(ary[0]))
 
+char const *MODE_STRING[] = {
+    "CBC", "CFB", "CTR", "ECB", "OFB",
+};
+
 static void
 default_error_func(void *context, char const *fmt, ...)
 {
@@ -106,6 +110,7 @@ inline_decrypt(blowfish_state *self, uint32_t *pxL, uint32_t *pxR)
     *pxR = xR;
 }
 
+/* Encrypts 8 bytes from `in` to `out` */
 static void
 block_encrypt(blowfish_state *self, uint8_t const *in, uint8_t *out)
 {
@@ -124,6 +129,55 @@ block_decrypt(blowfish_state *self, uint8_t const *in, uint8_t *out)
     inline_decrypt(self, &xL, &xR);
     word_to_bytes(xL, out);
     word_to_bytes(xR, out + 4);
+}
+
+/*
+ * Verify and remove PKCS#7 padding from a plaintext blob.
+ *
+ * @param self - blowfish decryption state
+ * @param plaintext - pointer to the decrypted plaintext buffer, unchanged
+ *                    if padding is correct; DEALLOCATED and set to NULL
+ *                    when padding is not correct
+ * @param plaintext_len - the length of the padded buffer on input,
+ *                        the unpadded length upon return
+ * @param on_error - function to call to report an error
+ * @param error_context - error context to pass along
+ */
+static void
+unpad(blowfish_state const *self, uint8_t **plaintext, size_t *plaintext_len,
+      error_function on_error, void *error_context)
+{
+    if (self->pkcs7padding) {
+        uint8_t *cipher = *plaintext;
+        size_t cipher_len = *plaintext_len;
+        uint8_t padding_length = cipher[cipher_len - 1];
+        if (padding_length >= cipher_len) {
+            free(cipher);
+            *plaintext = NULL;
+            *plaintext_len = 0;
+            on_error(error_context, "Invalid PKCS padding value %02x",
+                     padding_length);
+        } else {
+            *plaintext_len -= padding_length;
+            for (uint8_t *byte_ptr = &cipher[cipher_len - padding_length],
+                         *end_ptr = &cipher[cipher_len - 1];
+                 byte_ptr != end_ptr; ++byte_ptr)
+            {
+                if (*byte_ptr != padding_length) {
+                    uint8_t wrong_byte = *byte_ptr;
+                    size_t offset = byte_ptr - cipher;
+                    free(cipher);
+                    *plaintext = NULL;
+                    *plaintext_len = 0;
+                    on_error(error_context,
+                             "Invalid PKCS padding value at offset %u, "
+                             "expected %02x, found %02x",
+                             offset, padding_length, wrong_byte);
+                    break;
+                }
+            }
+        }
+    }
 }
 
 static bool
@@ -249,6 +303,7 @@ blowfish_init(blowfish_state *self, uint8_t const *key, size_t key_len,
     }
 
     self->mode = mode;
+    self->pkcs7padding = true;
     self->segment_size = segment_size;
     self->count = BLOWFISH_BLOCK_SIZE;
     if (iv) {
@@ -300,8 +355,16 @@ uint8_t *
 blowfish_encrypt(blowfish_state *self, uint8_t const *msg, size_t msg_len,
                  size_t *out_len, error_function on_error, void *error_context)
 {
+#define advance(ptr, offset)                                                   \
+    do {                                                                       \
+        ptr = ((offset + 1) == msg_len) ? &padding[0] : ptr + 1;               \
+    } while (0)
+
+    uint8_t padding[BLOWFISH_BLOCK_SIZE];
+    size_t pad_len = 0;
     uint8_t temp[BLOWFISH_BLOCK_SIZE];
     size_t i, j;
+    uint8_t const *in_ptr;
     uint8_t *out_buf;
 
     if (on_error == NULL) {
@@ -312,51 +375,62 @@ blowfish_encrypt(blowfish_state *self, uint8_t const *msg, size_t msg_len,
     if (msg_len == 0) {
         return NULL;
     }
-    if (msg_len % BLOWFISH_BLOCK_SIZE) {
-        switch (self->mode) {
-        case MODE_CBC:
+
+    if (self->pkcs7padding) {
+        if (self->mode == MODE_CBC || self->mode == MODE_ECB) {
+            pad_len = BLOWFISH_BLOCK_SIZE - (msg_len % BLOWFISH_BLOCK_SIZE);
+            memset(&padding[0], pad_len, sizeof(padding));
+        } else if (self->mode == MODE_CFB) {
+            uint8_t segment_byte_size = (self->segment_size / 8);
+            pad_len = (segment_byte_size - (msg_len % segment_byte_size));
+        }
+    } else {
+        if ((self->mode == MODE_CBC || self->mode == MODE_ECB)
+            && (msg_len % BLOWFISH_BLOCK_SIZE))
+        {
             on_error(error_context,
-                     "CBC mode requires input multiple of %d bytes",
-                     BLOWFISH_BLOCK_SIZE);
+                     "%s mode requires input multiple of %d bytes",
+                     MODE_STRING[self->mode], BLOWFISH_BLOCK_SIZE);
             return NULL;
-        case MODE_ECB:
+        }
+        if (self->mode == MODE_CFB && (msg_len % (self->segment_size / 8))) {
             on_error(error_context,
-                     "ECB mode requires input multiple of %d bytes",
-                     BLOWFISH_BLOCK_SIZE);
+                     "CFB mode requires input strings multiple of %d bytes",
+                     self->segment_size / 8);
             return NULL;
         }
     }
-    if (self->mode == MODE_CFB && (msg_len % (self->segment_size / 8))) {
-        on_error(error_context,
-                 "CFB mode requires input strings multiple of %d bytes",
-                 self->segment_size / 8);
-        return NULL;
-    }
+    memset(&padding[0], pad_len, sizeof(padding));
 
-    out_buf = (uint8_t *)malloc(msg_len);
+    out_buf = (uint8_t *)malloc(msg_len + pad_len);
     if (out_buf == NULL) {
         on_error(error_context, "failed to allocate buffer of %d bytes",
-                 *out_len);
+                 msg_len + pad_len);
         return NULL;
     }
-    *out_len = msg_len;
+    *out_len = msg_len + pad_len;
 
     switch (self->mode) {
     case MODE_CBC:
-        for (i = 0; i < msg_len; i += BLOWFISH_BLOCK_SIZE) {
+        in_ptr = msg;
+        for (i = 0; i < *out_len; i += BLOWFISH_BLOCK_SIZE) {
             for (j = 0; j < BLOWFISH_BLOCK_SIZE; ++j) {
-                temp[j] = msg[i + j] ^ self->iv[j];
+                temp[j] = *in_ptr ^ self->iv[j];
+                advance(in_ptr, i + j);
             }
             block_encrypt(self, temp, out_buf + i);
             memcpy(self->iv, out_buf + i, BLOWFISH_BLOCK_SIZE);
         }
         break;
     case MODE_CFB:
-        for (i = 0; i < msg_len; i += self->segment_size / 8) {
+        in_ptr = msg;
+        for (i = 0; i < *out_len; i += self->segment_size / 8) {
             block_encrypt(self, self->iv, temp);
             for (j = 0; j < self->segment_size / 8; j++) {
-                out_buf[i + j] = msg[i + j] ^ temp[j];
+                out_buf[i + j] = *in_ptr ^ temp[j];
+                advance(in_ptr, i + j);
             }
+
             if (self->segment_size == (BLOWFISH_BLOCK_SIZE * 8)) {
                 memcpy(self->iv, out_buf + i, BLOWFISH_BLOCK_SIZE);
             } else if ((self->segment_size % 8) == 0) {
@@ -369,8 +443,16 @@ blowfish_encrypt(blowfish_state *self, uint8_t const *msg, size_t msg_len,
         }
         break;
     case MODE_ECB:
-        for (i = 0; i < msg_len; i += BLOWFISH_BLOCK_SIZE) {
+        for (i = 0; i < (msg_len / BLOWFISH_BLOCK_SIZE) * BLOWFISH_BLOCK_SIZE;
+             i += BLOWFISH_BLOCK_SIZE)
+        {
             block_encrypt(self, msg + i, out_buf + i);
+        }
+        if (self->pkcs7padding) {
+            size_t remaining = msg_len % BLOWFISH_BLOCK_SIZE;
+            memcpy(&temp[0], msg + i, remaining);
+            memset(&temp[remaining], sizeof(temp) - remaining, pad_len);
+            block_encrypt(self, &temp[0], out_buf + i);
         }
         break;
     case MODE_OFB:
@@ -429,17 +511,22 @@ blowfish_decrypt(blowfish_state *self, uint8_t const *msg, size_t msg_len,
                                 error_context);
     }
 
-    if (self->mode == MODE_CFB) {
-        if (msg_len % (self->segment_size / 8)) {
+    if (!self->pkcs7padding) {
+        if ((self->mode == MODE_CBC || self->mode == MODE_ECB)
+            && (msg_len % BLOWFISH_BLOCK_SIZE))
+        {
+            on_error(error_context,
+                     "Ciphertext must be a multiple of block size");
+            return NULL;
+        }
+
+        if (self->mode == MODE_CFB && (msg_len % (self->segment_size / 8))) {
             on_error(error_context,
                      "Ciphertext must be a multiple of segment "
                      "size %d in length",
                      (self->segment_size / 8));
             return NULL;
         }
-    } else if (msg_len % BLOWFISH_BLOCK_SIZE) {
-        on_error(error_context, "Ciphertext must be a multiple of block size");
-        return NULL;
     }
 
     if (!(out_buf = (uint8_t *)malloc(msg_len))) {
@@ -457,7 +544,9 @@ blowfish_decrypt(blowfish_state *self, uint8_t const *msg, size_t msg_len,
                 self->iv[j] = msg[i + j];
             }
         }
+        unpad(self, &out_buf, out_len, on_error, error_context);
         break;
+
     case MODE_CFB:
         for (i = 0; i < msg_len; i += (self->segment_size / 8)) {
             block_encrypt(self, &self->iv[0], &temp[0]);
@@ -474,21 +563,26 @@ blowfish_decrypt(blowfish_state *self, uint8_t const *msg, size_t msg_len,
                 /* cannot happen?! */
             }
         }
+        unpad(self, &out_buf, out_len, on_error, error_context);
         break;
+
     case MODE_ECB:
         for (i = 0; i < msg_len; i += BLOWFISH_BLOCK_SIZE) {
             block_decrypt(self, &msg[i], &out_buf[i]);
         }
+        unpad(self, &out_buf, out_len, on_error, error_context);
         break;
+
     case MODE_CTR:
     case MODE_OFB:
         /* handled above */
         break;
+
     default:
-        on_error(error_context, "Unimplemented mode");
         free(out_buf);
         out_buf = NULL;
         *out_len = 0;
+        on_error(error_context, "Unimplemented mode");
         break;
     }
 

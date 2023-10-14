@@ -45,6 +45,12 @@ describe("#ECB", function()
             assert.equal(57, #key)
             assert.has.errors(function() blowfish.new(MODE, key) end)
         end)
+        it("can disable padding", function()
+            local keychain = blowfish.new(MODE, KEY, IV, nil, false)
+            local value, err = keychain:encrypt("a")
+            assert.is_nil(value)
+            assert.is_not_nil(err)
+        end)
     end)
 
     describe("encryption", function()
@@ -61,7 +67,9 @@ describe("#ECB", function()
             assert.is_nil(value)
             assert.is_not_nil(err)
         end)
-        it("requires message that is multiple of eight bytes", function()
+        it("requires message that is multiple of eight bytes #pkcs7-disabled",
+           function()
+            keychain:disable_pkcs7_padding()
             local message = "a"
             while (#message <= 64) do
                 value, err = keychain:encrypt(message)
@@ -92,21 +100,24 @@ describe("#ECB", function()
             assert.is_nil(value)
             assert.is_not_nil(err)
         end)
-        it("requires cipher-text that is multiple of eight bytes", function()
-            local ciphertext = "\0"
-            while (#ciphertext <= 64) do
-                value, err = keychain:decrypt(ciphertext)
-                if (#ciphertext % 8 == 0) then
-                    assert.is_not_nil(value)
-                    assert.is_nil(err)
-                else
-                    assert.is_nil(value)
-                    assert.is_not_nil(err)
+        it(
+            "requires cipher-text that is multiple of eight bytes #pkcs7-disabled",
+            function()
+                keychain:disable_pkcs7_padding()
+                local ciphertext = "\0"
+                while (#ciphertext <= 64) do
+                    value, err = keychain:decrypt(ciphertext)
+                    if (#ciphertext % 8 == 0) then
+                        assert.is_not_nil(value)
+                        assert.is_nil(err)
+                    else
+                        assert.is_nil(value)
+                        assert.is_not_nil(err)
+                    end
+                    ciphertext = ciphertext .. "\0"
+                    keychain:reset()
                 end
-                ciphertext = ciphertext .. "\0"
-                keychain:reset()
-            end
-        end)
+            end)
     end)
 
 end)

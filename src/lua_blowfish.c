@@ -16,6 +16,8 @@ static int decrypt(lua_State *);
 static int encrypt(lua_State *);
 static int reset(lua_State *);
 static int to_string(lua_State *);
+static int enable_pkcs7_padding(lua_State *L);
+static int disable_pkcs7_padding(lua_State *L);
 
 static const struct luaL_Reg functions[] = {
     {"new", new_blowfish},
@@ -23,8 +25,13 @@ static const struct luaL_Reg functions[] = {
 };
 
 static const struct luaL_Reg methods[] = {
-    {"decrypt", decrypt},      {"encrypt", encrypt}, {"reset", reset},
-    {"__tostring", to_string}, {NULL, NULL},
+    {"decrypt", decrypt},
+    {"disable_pkcs7_padding", disable_pkcs7_padding},
+    {"enable_pkcs7_padding", enable_pkcs7_padding},
+    {"encrypt", encrypt},
+    {"reset", reset},
+    {"__tostring", to_string},
+    {NULL, NULL},
 };
 
 static const struct {
@@ -61,11 +68,15 @@ new_blowfish(lua_State *L)
     char const *key, *iv;
     size_t key_len, iv_len;
     lua_Integer mode, segment_size;
+    bool enable_padding = true;
 
     mode = luaL_checkinteger(L, 1);
     key = luaL_checklstring(L, 2, &key_len);
     iv = luaL_optlstring(L, 3, NULL, &iv_len);
     segment_size = luaL_optinteger(L, 4, 8);
+    if (!lua_isnil(L, 5)) {
+        enable_padding = lua_tonumber(L, 5);
+    }
 
     luaL_argcheck(L, key_len > 0, 2, "non-empty key required");
     luaL_argcheck(L, key_len >= 4 && key_len <= 56, 2,
@@ -104,6 +115,7 @@ new_blowfish(lua_State *L)
                       (size_t)iv_len, (blowfish_mode)mode, (int)segment_size,
                       on_error, L))
     {
+        state->pkcs7padding = enable_padding;
         luaL_getmetatable(L, TABLE_NAME);
         lua_setmetatable(L, -2);
         return 1;
@@ -150,6 +162,22 @@ decrypt(lua_State *L)
     }
 
     return 1;
+}
+
+static int
+disable_pkcs7_padding(lua_State *L)
+{
+    blowfish_state *state = extract_state(L);
+    state->pkcs7padding = false;
+    return 0;
+}
+
+static int
+enable_pkcs7_padding(lua_State *L)
+{
+    blowfish_state *state = extract_state(L);
+    state->pkcs7padding = true;
+    return 0;
 }
 
 static int
